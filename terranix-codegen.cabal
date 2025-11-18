@@ -1,0 +1,45 @@
+cabal-version: 3.0
+name: terranix-codegen
+version: 0.1.0.0
+synopsis:
+  A program for generating Terranix modules from Terraform provider schemata
+
+homepage: https://github.com/synapdeck/terranix-codegen
+license: MPL-2.0
+license-file: LICENSE
+author: Alexis Williams
+maintainer: alexis@typedr.at
+copyright: ©️ 2025 Synapdeck, Inc.
+category: System
+build-type: Simple
+extra-doc-files: CHANGELOG.md
+
+common warnings
+  ghc-options: -Wall
+
+executable terranix-codegen
+  import: warnings
+  main-is: Main.hs
+  build-depends:
+    aeson ^>=2.2.3.0,
+    autodocodec ^>=0.5.0.0,
+    base ^>=4.20.2.0,
+    containers ^>=0.7,
+    text ^>=2.1.3,
+    vector ^>=0.13,
+
+  other-modules:
+    TerranixCodegen.Main
+    TerranixCodegen.ProviderSchema
+    TerranixCodegen.ProviderSchema.Attribute
+    TerranixCodegen.ProviderSchema.Block
+    TerranixCodegen.ProviderSchema.CtyType
+    TerranixCodegen.ProviderSchema.Function
+    TerranixCodegen.ProviderSchema.Identity
+    TerranixCodegen.ProviderSchema.Parameter
+    TerranixCodegen.ProviderSchema.Provider
+    TerranixCodegen.ProviderSchema.Schema
+    TerranixCodegen.ProviderSchema.Types
+
+  hs-source-dirs: app
+  default-language: GHC2024

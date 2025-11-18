@@ -1,0 +1,3 @@
+[submodule "vendor/terraform-json"]
+	path = vendor/terraform-json
+	url = git@github.com:hashicorp/terraform-json.git
