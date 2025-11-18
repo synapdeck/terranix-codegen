@@ -6,6 +6,11 @@
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
     fourmolu-nix.url = "github:jedimahdi/fourmolu-nix";
+    actions-nix = {
+      url = "github:nialov/actions.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.git-hooks.follows = "git-hooks";
+    };
   };
   outputs = inputs @ {
     nixpkgs,
