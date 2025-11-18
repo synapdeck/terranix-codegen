@@ -48,26 +48,31 @@ The Terranix Module Generator is a tool that automatically generates [Terranix](
 ### Component Responsibilities
 
 1. **Schema Parser** (✅ Complete)
+
    - Parses Terraform provider schema JSON
    - Validates schema structure
    - Provides strongly-typed Haskell representation
 
-2. **Type Mapper** (🔨 To Build)
+1. **Type Mapper** (🔨 To Build)
+
    - Maps Terraform `CtyType` to Nix type expressions
    - Handles primitive, collection, and structural types
    - Preserves type constraints and metadata
 
-3. **Option Builder** (🔨 To Build)
+1. **Option Builder** (🔨 To Build)
+
    - Converts schema attributes to NixOS options
    - Generates documentation from schema descriptions
    - Handles required/optional/computed semantics
 
-4. **Module Generator** (🔨 To Build)
+1. **Module Generator** (🔨 To Build)
+
    - Assembles complete NixOS modules
    - Handles nested blocks recursively
    - Manages different nesting modes (single, list, map, etc.)
 
-5. **File Organizer** (🔨 To Build)
+1. **File Organizer** (🔨 To Build)
+
    - Creates directory structure
    - Generates import/export files
    - Manages cross-module references
@@ -98,11 +103,13 @@ The core challenge is mapping Terraform's type system (go-cty) to Nix's type sys
 ### Structural Types
 
 #### Objects
+
 ```haskell
 CtyObject (Map Text CtyType) (Set Text)  -- attributes, optionals
 ```
 
 Maps to:
+
 ```nix
 types.submodule {
   options = {
@@ -113,16 +120,19 @@ types.submodule {
 ```
 
 #### Tuples
+
 ```haskell
 CtyTuple [CtyType]
 ```
 
 Maps to:
+
 ```nix
 types.listOf types.anything  # with length validation
 ```
 
 Or for known positions:
+
 ```nix
 # Custom type validator checking length and element types
 ```
@@ -138,6 +148,7 @@ Terraform attributes have three orthogonal properties that affect Nix module gen
 | **Computed** | Set by provider | `readOnly = true;` (if not settable) |
 
 **Combinations**:
+
 - `required=true`: User must provide value
 - `optional=true`: User may provide value, `default = null;`
 - `computed=true`: Provider can compute value
@@ -157,6 +168,7 @@ Schema blocks with nesting modes map to different Nix structures:
 | `NestingMap` | Map of blocks | `types.attrsOf (types.submodule { ... })` |
 
 **Min/Max Items**: When specified, add validators:
+
 ```nix
 type = types.listOf types.submodule { ... };
 # Add assertion: length >= minItems && length <= maxItems
@@ -300,6 +312,7 @@ The `default.nix` files enable easy imports:
 ```
 
 Users can import selectively:
+
 ```nix
 {
   imports = [ ./providers/aws ];  # Everything
@@ -327,11 +340,13 @@ This produces a JSON file with the complete provider schema structure.
 ### Tool Invocation
 
 Basic usage:
+
 ```bash
 terranix-codegen < schema.json
 ```
 
 With options:
+
 ```bash
 terranix-codegen \
   --input schema.json \
@@ -397,6 +412,7 @@ Users can integrate generated modules into existing terranix projects:
 ```
 
 Then generate Terraform JSON:
+
 ```bash
 terranix terranix-config.nix > terraform.json
 terraform init
@@ -408,16 +424,17 @@ terraform apply
 When providers update:
 
 1. Update Terraform providers: `terraform init -upgrade`
-2. Export new schema: `terraform providers schema -json > schema.json`
-3. Regenerate modules: `terranix-codegen < schema.json`
-4. Review changes (via git diff)
-5. Update configurations if breaking changes
+1. Export new schema: `terraform providers schema -json > schema.json`
+1. Regenerate modules: `terranix-codegen < schema.json`
+1. Review changes (via git diff)
+1. Update configurations if breaking changes
 
 ## Design Decisions
 
 ### Why NixOS Modules?
 
 **Advantages**:
+
 - **Type safety**: Catch configuration errors before runtime
 - **Composition**: Easily combine and override configurations
 - **Documentation**: Self-documenting via option descriptions
@@ -425,6 +442,7 @@ When providers update:
 - **IDE support**: Nix language servers understand module structure
 
 **Trade-offs**:
+
 - More verbose than raw Terraform HCL
 - Learning curve for Nix module system
 - Generated files are larger
@@ -432,12 +450,14 @@ When providers update:
 ### Why Generate Per-Resource Files?
 
 **Advantages**:
+
 - **Performance**: Import only needed resources
 - **Clarity**: Easy to find and read individual resource definitions
 - **Git-friendly**: Changes to provider affect only modified resources
 - **Debugging**: Clear source of type errors
 
 **Trade-offs**:
+
 - More files to manage (100+ for large providers)
 - Longer generation time
 - Larger disk footprint
@@ -447,6 +467,7 @@ When providers update:
 ### Why Preserve Schema Metadata?
 
 Keeping descriptions, deprecation warnings, and other metadata ensures:
+
 - Generated modules are self-documenting
 - Users get IDE hints and warnings
 - Deprecated options are clearly marked
@@ -455,6 +476,7 @@ Keeping descriptions, deprecation warnings, and other metadata ensures:
 ### Why Support Filtering?
 
 Large providers (AWS, Google Cloud) have hundreds of resources. Filtering allows:
+
 - Faster generation for specific use cases
 - Smaller module footprint
 - Focused updates when only certain resources change
@@ -464,6 +486,7 @@ Large providers (AWS, Google Cloud) have hundreds of resources. Filtering allows
 **Decision**: Code generation (static Nix modules)
 
 **Rationale**:
+
 - Nix modules provide compile-time safety
 - No runtime dependencies on terranix-codegen
 - Better IDE/tooling support
@@ -477,13 +500,13 @@ Large providers (AWS, Google Cloud) have hundreds of resources. Filtering allows
 Potential future improvements:
 
 1. **Incremental Generation**: Only regenerate changed resources
-2. **Custom Overlays**: User-defined modifications to generated modules
-3. **Migration Helpers**: Automated config updates for breaking changes
-4. **Validation Functions**: Generate custom validators for complex constraints
-5. **Test Generation**: Generate basic terranix tests for each resource
-6. **Documentation Site**: Generate browsable documentation (mdbook/nixos-manual)
-7. **Provider Plugins**: Custom generation logic for specific providers
-8. **Schema Caching**: Cache schemas to speed up regeneration
+1. **Custom Overlays**: User-defined modifications to generated modules
+1. **Migration Helpers**: Automated config updates for breaking changes
+1. **Validation Functions**: Generate custom validators for complex constraints
+1. **Test Generation**: Generate basic terranix tests for each resource
+1. **Documentation Site**: Generate browsable documentation (mdbook/nixos-manual)
+1. **Provider Plugins**: Custom generation logic for specific providers
+1. **Schema Caching**: Cache schemas to speed up regeneration
 
 ## References
 

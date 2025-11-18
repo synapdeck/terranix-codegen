@@ -3,9 +3,9 @@
 This document provides concrete examples of how Terraform provider schemas are transformed into Terranix modules. Each example shows:
 
 1. **HCL Usage** - How the resource is used in native Terraform
-2. **Provider Schema** - The JSON schema that describes the resource
-3. **Generated Terranix Module** - The Nix module generated from the schema
-4. **Terranix Usage** - How to use the generated module in Terranix
+1. **Provider Schema** - The JSON schema that describes the resource
+1. **Generated Terranix Module** - The Nix module generated from the schema
+1. **Terranix Usage** - How to use the generated module in Terranix
 
 ## Example 1: Simple Attributes (Primitives)
 

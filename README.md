@@ -21,8 +21,8 @@
 terranix-codegen reads Terraform provider schemas and generates:
 
 1. **Type-safe NixOS modules** for all resources and data sources
-2. **Comprehensive documentation** in mdBook format
-3. **Changelogs** tracking provider updates
+1. **Comprehensive documentation** in mdBook format
+1. **Changelogs** tracking provider updates
 
 ```
 Terraform Provider → Schema JSON → terranix-codegen → Nix Modules + Docs
@@ -51,11 +51,13 @@ providers/
 ## Why?
 
 **The Problem**: Manually creating Terranix modules for Terraform providers is tedious:
+
 - AWS alone has 1000+ resources
 - Providers update constantly
 - Type definitions are already in the schema
 
 **The Solution**: Generate modules automatically from schemas, ensuring:
+
 - Type safety through NixOS module system
 - Always up-to-date with provider versions
 - Complete documentation from schema metadata
@@ -120,6 +122,7 @@ Maps Terraform's type system to Nix:
 ### 3. Module Generation (Planned)
 
 Generates NixOS modules with:
+
 - Proper types for all attributes
 - Documentation from schema descriptions
 - Validation for required/optional fields
@@ -128,6 +131,7 @@ Generates NixOS modules with:
 ### 4. Documentation Generation (Planned)
 
 Creates mdBook documentation with:
+
 - Searchable resource reference
 - Usage examples
 - Argument/attribute listings
@@ -240,6 +244,6 @@ This project is licensed under the [Mozilla Public License 2.0 (MPL-2.0)](https:
 - [terraform-json](https://github.com/hashicorp/terraform-json) - Reference Go implementation for schema types
 - The NixOS and Terraform communities
 
----
+______________________________________________________________________
 
 **Note**: This is an independent project and is not officially affiliated with HashiCorp, Terraform, or Terranix.

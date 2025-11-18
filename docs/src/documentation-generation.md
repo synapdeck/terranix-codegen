@@ -7,10 +7,10 @@ Generating comprehensive, accurate documentation is essential for making generat
 Generated modules without documentation are difficult to use because:
 
 1. **Discovery**: Users can't find available resources and their options
-2. **Understanding**: Type signatures alone don't explain what attributes do
-3. **Validation**: Users need to know constraints (required fields, valid values)
-4. **Migration**: Deprecation warnings guide users to newer patterns
-5. **IDE Support**: Documentation enables autocomplete and inline help
+1. **Understanding**: Type signatures alone don't explain what attributes do
+1. **Validation**: Users need to know constraints (required fields, valid values)
+1. **Migration**: Deprecation warnings guide users to newer patterns
+1. **IDE Support**: Documentation enables autocomplete and inline help
 
 Since Terraform provider schemas already contain rich metadata (descriptions, types, constraints), we can generate documentation automatically rather than requiring manual maintenance.
 
@@ -32,6 +32,7 @@ The Terraform provider schema provides several sources of documentation:
 ```
 
 Extractable information:
+
 - **Description**: Human-readable explanation
 - **Type**: Data type (string, number, bool, list, object, etc.)
 - **Required/Optional**: Whether the attribute must be provided
@@ -55,6 +56,7 @@ Extractable information:
 ```
 
 Extractable information:
+
 - **Nesting mode**: How blocks are structured (single, list, map)
 - **Min/Max items**: Constraints on number of blocks
 - **Nested structure**: Recursive block and attribute definitions
@@ -74,6 +76,7 @@ Extractable information:
 ```
 
 Extractable information:
+
 - **Provider name**: E.g., "aws", "google", "azurerm"
 - **Resource types**: All available resources
 - **Data source types**: All available data sources
@@ -88,6 +91,7 @@ Documentation embedded directly in the generated Nix modules as option descripti
 **Purpose**: Provide IDE hints and inline help
 
 **Example**:
+
 ```nix
 ami = mkOption {
   type = types.str;
@@ -101,11 +105,13 @@ ami = mkOption {
 ```
 
 **Advantages**:
+
 - Immediately available in the Nix REPL
 - IDE integration (nix-lsp, nil)
 - No separate documentation to maintain
 
 **Limitations**:
+
 - Limited formatting options
 - No cross-references between options
 - Hard to browse all options
@@ -117,6 +123,7 @@ Generate browsable web documentation with search, navigation, and examples using
 **Purpose**: Primary documentation format for users
 
 **Structure**:
+
 ```
 docs/
 ├── providers/
@@ -195,6 +202,7 @@ Additional EBS volumes to attach. Can be specified multiple times.
 ````
 
 **Advantages**:
+
 - User-friendly and searchable
 - Can include examples and guides
 - Easy to navigate and discover
@@ -203,6 +211,7 @@ Additional EBS volumes to attach. Can be specified multiple times.
 - Great developer experience
 
 **Build Command**:
+
 ```bash
 cd docs && mdbook build
 # Output: docs/book/
@@ -215,21 +224,25 @@ cd docs && mdbook build
 Each resource and data source gets its own documentation page with:
 
 **1. Overview**
+
 - Brief description of what the resource manages
 - Link to upstream Terraform provider docs
 
 **2. Example Usage**
+
 - Complete working example in Terranix
 - Common use cases
 - Multiple examples for complex resources
 
 **3. Argument Reference**
 Organized by:
+
 - **Required Arguments**: Must be specified
 - **Optional Arguments**: Can be omitted
 - **Computed Arguments**: Set by provider (read-only)
 
 For each argument:
+
 - Name and type
 - Description (from schema)
 - Default value
@@ -238,16 +251,19 @@ For each argument:
 
 **4. Block Reference**
 For nested blocks:
+
 - Block name and purpose
 - Nesting mode (single, list, map)
 - Min/max items
 - Nested arguments
 
 **5. Deprecations and Migrations**
+
 - Deprecated arguments with alternatives
 - Migration guides for breaking changes
 
 **6. See Also**
+
 - Related resources
 - Data sources
 - External links
@@ -257,7 +273,8 @@ For nested blocks:
 Document provider-level configuration:
 
 **Example** (`providers/aws.md`):
-```markdown
+
+````markdown
 # AWS Provider
 
 Configure the AWS provider for Terranix.
@@ -272,14 +289,15 @@ provider.aws.main = {
     role_arn = "arn:aws:iam::123456789012:role/TerraformRole";
   };
 };
-```
+````
 
 ## Configuration Reference
 
 - **`region`** (string, required) - AWS region for API requests
 - **`access_key`** (string) - AWS access key ID
 - **`secret_key`** (string) - AWS secret access key
-```
+
+````
 
 ### Index Pages
 
@@ -323,13 +341,14 @@ buildDescription attr = T.unlines $ catMaybes
 formatDeprecation :: Maybe Bool -> Maybe Text
 formatDeprecation (Just True) = Just "\nDEPRECATED: This attribute is deprecated."
 formatDeprecation _ = Nothing
-```
+````
 
 ### Phase 2: Web Documentation (mdBook)
 
 Generate markdown files and build with mdBook.
 
 **Implementation**:
+
 ```haskell
 generateDocs :: ProviderSchema -> IO ()
 generateDocs schema = do
@@ -351,6 +370,7 @@ generateResourceDoc name schema = do
 ```
 
 **Output Structure**:
+
 ```
 docs/
 ├── book.toml              # mdBook configuration
@@ -374,6 +394,7 @@ docs/
 ### Phase 3: Interactive Documentation
 
 Add interactive features:
+
 - **Search**: Full-text search across all documentation
 - **Type Explorer**: Interactive type browser
 - **Example Generator**: Generate examples from schemas
@@ -386,6 +407,7 @@ Enhance generated documentation with additional metadata:
 ### Terraform Provider Links
 
 Link to upstream Terraform documentation:
+
 ```nix
 # In module comments
 # Terraform Docs: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance
@@ -394,6 +416,7 @@ Link to upstream Terraform documentation:
 ### Schema Version Tracking
 
 Document which provider version the modules were generated from:
+
 ```markdown
 ---
 provider: aws
@@ -406,6 +429,7 @@ generated_at: 2025-01-17T10:30:00Z
 ### Examples from Community
 
 Option to include curated examples:
+
 ```markdown
 ## Community Examples
 
@@ -420,22 +444,26 @@ Option to include curated examples:
 When providers update:
 
 1. **Fetch new schema**:
+
    ```bash
    terraform init -upgrade
    terraform providers schema -json > schema.json
    ```
 
-2. **Regenerate modules and docs**:
+1. **Regenerate modules and docs**:
+
    ```bash
    terranix-codegen --input schema.json --output ./modules --docs ./docs
    ```
 
-3. **Review changes**:
+1. **Review changes**:
+
    ```bash
    git diff docs/
    ```
 
-4. **Highlight breaking changes**:
+1. **Highlight breaking changes**:
+
    - Deprecated → removed attributes
    - Changed types
    - New required attributes
@@ -464,11 +492,13 @@ Automatically generate changelogs by comparing schemas:
 ### 1. Use Clear, Consistent Language
 
 **Good**:
+
 ```
 AMI to use for the instance. Must be an AMI ID in the format ami-xxxxxxxx.
 ```
 
 **Bad**:
+
 ```
 The AMI. (string)
 ```
@@ -476,6 +506,7 @@ The AMI. (string)
 ### 2. Provide Context and Examples
 
 **Good**:
+
 ```
 `instance_type` (string, required)
 
@@ -490,6 +521,7 @@ See [AWS Instance Types](https://aws.amazon.com/ec2/instance-types/) for complet
 ```
 
 **Bad**:
+
 ```
 `instance_type` (string) - The instance type.
 ```
@@ -497,6 +529,7 @@ See [AWS Instance Types](https://aws.amazon.com/ec2/instance-types/) for complet
 ### 3. Explain Relationships
 
 **Good**:
+
 ```
 `subnet_id` (string)
 
@@ -511,6 +544,7 @@ See also: [aws_subnet](./subnet.md)
 ### 4. Document Computed Attributes Clearly
 
 **Good**:
+
 ```
 `id` (string, read-only)
 
@@ -524,6 +558,7 @@ This value is computed and cannot be set.
 ### 5. Warn About Sensitive Data
 
 **Good**:
+
 ```
 `password` (string, sensitive)
 
@@ -546,6 +581,7 @@ The primary tool for generating web documentation:
 - **Customizable**: Themes, plugins, preprocessors
 
 **Installation**:
+
 ```nix
 # In your flake.nix or shell.nix
 buildInputs = [ pkgs.mdbook ];
@@ -589,6 +625,7 @@ generateDocs :: ProviderSchemas -> DocFormat -> IO ()
 ### 1. Auto-generated Diagrams
 
 Generate diagrams showing resource relationships:
+
 ```
 aws_instance
   ├─ requires: aws_subnet
@@ -600,7 +637,8 @@ aws_instance
 ### 2. Migration Assistants
 
 Generate migration guides for breaking changes:
-```markdown
+
+````markdown
 ## Migrating from v4 to v5
 
 The `availability_zone` attribute has been removed. Use the `placement` block instead:
@@ -608,14 +646,16 @@ The `availability_zone` attribute has been removed. Use the `placement` block in
 **Before**:
 ```nix
 availability_zone = "us-east-1a";
-```
+````
 
 **After**:
+
 ```nix
 placement = {
   availability_zone = "us-east-1a";
 };
 ```
+
 ```
 
 ### 3. AI-Enhanced Descriptions
@@ -636,3 +676,4 @@ Good documentation is critical for generated modules. By leveraging the rich met
 4. **Examples** showing common usage patterns
 
 This approach provides a modern documentation experience that's searchable, browsable, and maintainable, without the complexity of legacy documentation formats.
+```

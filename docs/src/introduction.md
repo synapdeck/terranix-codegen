@@ -12,6 +12,7 @@ Terranix is a tool that lets you write Terraform configurations using the Nix la
 - **Tooling**: Use Nix's rich ecosystem of tools and libraries
 
 Instead of writing Terraform HCL:
+
 ```hcl
 resource "aws_instance" "web" {
   ami           = "ami-123456"
@@ -20,6 +21,7 @@ resource "aws_instance" "web" {
 ```
 
 You write Nix:
+
 ```nix
 resource.aws_instance.web = {
   ami = "ami-123456";
@@ -49,10 +51,10 @@ Terraform Provider → Schema JSON → terranix-codegen → Nix Modules
 ### What It Does
 
 1. **Reads** Terraform provider schemas (from `terraform providers schema -json`)
-2. **Parses** the schema into strongly-typed Haskell data structures
-3. **Generates** NixOS modules with proper types and documentation
-4. **Organizes** modules into a clean directory structure
-5. **Produces** documentation (mdBook format) for easy browsing
+1. **Parses** the schema into strongly-typed Haskell data structures
+1. **Generates** NixOS modules with proper types and documentation
+1. **Organizes** modules into a clean directory structure
+1. **Produces** documentation (mdBook format) for easy browsing
 
 ### What You Get
 
@@ -75,6 +77,7 @@ providers/
 ```
 
 Each module includes:
+
 - **Type-safe options**: Proper Nix types for every attribute
 - **Documentation**: Descriptions, constraints, deprecation warnings
 - **Validation**: Required/optional checks, nesting modes
@@ -112,6 +115,7 @@ Maps Terraform types to Nix types:
 ### 3. Module Generation (🔨 To Build)
 
 Generates NixOS modules from schemas:
+
 - Converts attributes to options
 - Handles nested blocks recursively
 - Preserves metadata (descriptions, deprecations)
@@ -120,6 +124,7 @@ Generates NixOS modules from schemas:
 ### 4. Documentation Generation (🔨 To Build)
 
 Creates mdBook documentation:
+
 - Resource reference pages with examples
 - Argument/attribute listings
 - Block structure documentation
