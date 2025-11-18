@@ -6,7 +6,7 @@
   }: {
     packages.docs = pkgs.stdenv.mkDerivation {
       name = "terranix-codegen-docs";
-      src = ./docs;
+      src = ../../docs;
       buildInputs = [pkgs.mdbook];
       buildPhase = ''
         mdbook build
