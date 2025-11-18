@@ -1,0 +1,10 @@
+[book]
+authors = ["Alexis Williams"]
+language = "en"
+src = "src"
+title = "terranix-codegen"
+
+[output.html]
+default-theme = "latte"
+preferred-dark-theme = "frappe"
+additional-css = ["./theme/catppuccin.css"]
