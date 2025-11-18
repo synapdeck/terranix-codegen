@@ -15,7 +15,6 @@
         deadnix.enable = true;
         statix.enable = true;
 
-        cabal-fmt.enable = true;
         cabal-gild.enable = true;
         fourmolu = {
           enable = true;
