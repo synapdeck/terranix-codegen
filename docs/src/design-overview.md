@@ -84,7 +84,7 @@ The core challenge is mapping Terraform's type system (go-cty) to Nix's type sys
 ### Primitive Types
 
 | Terraform CtyType | Nix Type | Notes |
-|-------------------|----------|-------|
+| ----------------- | ---------------- | ---------------------- |
 | `CtyBool` | `types.bool` | Direct mapping |
 | `CtyNumber` | `types.number` | Includes int and float |
 | `CtyString` | `types.str` | Direct mapping |
@@ -93,7 +93,7 @@ The core challenge is mapping Terraform's type system (go-cty) to Nix's type sys
 ### Collection Types (Homogeneous)
 
 | Terraform CtyType | Nix Type | Example |
-|-------------------|----------|---------|
+| ----------------- | --------------------------- | ---------------------- |
 | `CtyList t` | `types.listOf (mapType t)` | `["a", "b"]` |
 | `CtySet t` | `types.listOf (mapType t)` | Similar to list in Nix |
 | `CtyMap t` | `types.attrsOf (mapType t)` | `{key = value;}` |
@@ -142,7 +142,7 @@ Or for known positions:
 Terraform attributes have three orthogonal properties that affect Nix module generation:
 
 | Property | Meaning | Nix Representation |
-|----------|---------|-------------------|
+| ------------ | ----------------- | ------------------------------------ |
 | **Required** | Must be in config | No `default` value |
 | **Optional** | May be omitted | `default = null;` |
 | **Computed** | Set by provider | `readOnly = true;` (if not settable) |
@@ -160,7 +160,7 @@ Terraform attributes have three orthogonal properties that affect Nix module gen
 Schema blocks with nesting modes map to different Nix structures:
 
 | Nesting Mode | Terraform Example | Nix Type |
-|--------------|-------------------|----------|
+| --------------- | ------------------ | ------------------------------------------- |
 | `NestingSingle` | Single block | `types.submodule { ... }` |
 | `NestingGroup` | Single, never null | `types.submodule { ... }` (no default null) |
 | `NestingList` | Ordered list | `types.listOf (types.submodule { ... })` |
@@ -215,7 +215,7 @@ Each resource/data source module follows this template:
 { lib, ... }:
 with lib;
 {
-  options.resource.{provider}_{resource_name}.{instance_name} = mkOption {
+  options.{provider}.{resource_name}.{instance_name} = mkOption {
     type = types.attrsOf (types.submodule ({ config, ... }: {
       options = {
         # Generated options from schema
@@ -262,7 +262,7 @@ The provider configuration module (`provider.nix`) defines provider-level settin
 { lib, ... }:
 with lib;
 {
-  options.provider.{provider_name} = mkOption {
+  options.{provider_name} = mkOption {
     type = types.attrsOf (types.submodule {
       options = {
         # Provider configuration options from configSchema
@@ -358,7 +358,7 @@ terranix-codegen \
 ### CLI Arguments
 
 | Flag | Description | Default |
-|------|-------------|---------|
+| ----------------------- | --------------------------------------- | ------------- |
 | `--input FILE` | Input schema JSON (or stdin) | stdin |
 | `--output DIR` | Output directory | `./providers` |
 | `--provider NAME` | Generate only specific provider(s) | all |
