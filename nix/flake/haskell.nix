@@ -15,6 +15,10 @@
         };
       };
 
+      settings = {
+        terranix-codegen.check = true;
+      };
+
       autoWire = ["packages" "apps" "checks"];
     };
 

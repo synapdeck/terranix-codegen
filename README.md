@@ -300,7 +300,7 @@ Contributions are welcome! This project is actively being developed. Progress so
 - [x] Create custom `types.tupleOf` implementation
 - [ ] Implement documentation generator (mdBook)
 - [ ] Add resource/provider filtering to CLI
-- [ ] Add CI/CD pipeline
+- [x] Add CI/CD pipeline
 - [ ] Generate modules for popular providers (AWS, GCP, Azure)
 - [ ] Publish to nixpkgs
 
