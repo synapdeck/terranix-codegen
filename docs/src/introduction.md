@@ -143,20 +143,18 @@ Creates mdBook documentation:
 
 ## Project Status
 
-**Current State**: Core generation pipeline complete!
+**Current State**: Complete end-to-end generation pipeline!
 
 - ✅ **Schema parsing**: Complete and tested
 - ✅ **Design documentation**: Architecture defined
 - ✅ **Type Mapper**: Complete with 25 passing tests
 - ✅ **Option Builder**: Complete with 31 passing tests (including nested attributes)
-- ✅ **Module Generator**: Complete with 11 passing tests (67 total)
-- 🔨 **File Organizer**: Not yet implemented
+- ✅ **Module Generator**: Complete with 11 passing tests
+- ✅ **File Organizer**: Complete with 20 passing tests (86 total)
+- ✅ **CLI**: Complete with optparse-applicative
 - 🔨 **Documentation generation**: Not yet implemented
-- 🔨 **CLI**: Not yet implemented
 
 ## Quick Start
-
-(Once implemented, the workflow will be:)
 
 ```bash
 # 1. Get provider schema
@@ -165,12 +163,15 @@ terraform init
 terraform providers schema -json > schema.json
 
 # 2. Generate Terranix modules
-terranix-codegen --input schema.json --output ./terranix-modules
+cabal run terranix-codegen -- --input schema.json --output ./terranix-modules
+
+# Or from stdin:
+terraform providers schema -json | cabal run terranix-codegen -- --output ./modules
 
 # 3. Use the generated modules
 # In your terranix configuration:
 {
-  imports = [ ./terranix-modules/aws ];
+  imports = [ ./terranix-modules/registry.terraform.io/hashicorp/aws ];
 
   resource.aws_instance.web = {
     ami = "ami-123456";

@@ -82,11 +82,13 @@ The Terranix Module Generator is a tool that automatically generates [Terranix](
    - Location: `lib/TerranixCodegen/ModuleGenerator.hs`
    - Tests: `test/ModuleGeneratorSpec.hs` (11/11 passing)
 
-1. **File Organizer** (🔨 To Build)
+1. **File Organizer** (✅ Complete)
 
    - Creates directory structure
    - Generates import/export files
    - Manages cross-module references
+   - Location: `lib/TerranixCodegen/FileOrganizer.hs`
+   - Tests: `test/FileOrganizerSpec.hs` (20/20 passing)
 
 ## Type Mapping Strategy
 
@@ -361,22 +363,23 @@ With options:
 ```bash
 terranix-codegen \
   --input schema.json \
-  --output ./terranix-modules \
-  --provider aws \
-  --format-style nixfmt
+  --output ./terranix-modules
 ```
 
 ### CLI Arguments
 
 | Flag | Description | Default |
 | ----------------------- | --------------------------------------- | ------------- |
-| `--input FILE` | Input schema JSON (or stdin) | stdin |
-| `--output DIR` | Output directory | `./providers` |
-| `--provider NAME` | Generate only specific provider(s) | all |
-| `--resource PATTERN` | Filter resources by pattern | all |
-| `--data-source PATTERN` | Filter data sources by pattern | all |
-| `--format-style STYLE` | Nix formatter (nixfmt, alejandra, none) | nixfmt |
-| `--no-docs` | Skip generating documentation comments | false |
+| `--input FILE`, `-i` | Input schema JSON (or stdin) | stdin |
+| `--output DIR`, `-o` | Output directory | `./providers` |
+
+**Future enhancements:**
+
+- `--provider NAME` | Generate only specific provider(s) | all |
+- `--resource PATTERN` | Filter resources by pattern | all |
+- `--data-source PATTERN` | Filter data sources by pattern | all |
+- `--format-style STYLE` | Nix formatter (nixfmt, alejandra, none) | nixfmt |
+- `--no-docs` | Skip generating documentation comments | false |
 
 ### Output
 

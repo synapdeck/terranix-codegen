@@ -8,16 +8,16 @@
 
 ## Project Status
 
-**In Development** - Core code generation pipeline complete! Now working on file organization and CLI.
+**Ready for Use** - Complete end-to-end generation pipeline!
 
 - ✅ **Schema parsing**: Complete and tested
-- ✅ **Type Mapper**: Complete (CtyType → Nix type conversion)
-- ✅ **Option Builder**: Complete (SchemaAttribute → mkOption conversion)
-- ✅ **Module Generator**: Complete (assembles complete NixOS modules)
+- ✅ **Type Mapper**: Complete (CtyType → Nix type conversion) - 25 tests passing
+- ✅ **Option Builder**: Complete (SchemaAttribute → mkOption conversion) - 31 tests passing
+- ✅ **Module Generator**: Complete (assembles complete NixOS modules) - 11 tests passing
+- ✅ **File Organizer**: Complete (creates directory structure and files) - 20 tests passing
+- ✅ **CLI**: Complete (optparse-applicative with --input/-i and --output/-o flags)
 - ✅ **Design documentation**: Architecture defined and documented
-- 🔨 **File Organizer**: Not yet implemented
-- 🔨 **Documentation generation**: Not yet implemented
-- 🔨 **CLI**: Not yet implemented
+- 🔨 **Documentation generation**: Not yet implemented (future enhancement)
 
 ## What It Does
 
@@ -66,21 +66,22 @@ providers/
 - Complete documentation from schema metadata
 - No manual maintenance burden
 
-## Quick Start (Future)
-
-Once implemented, the workflow will be:
+## Quick Start
 
 ```bash
 # 1. Get provider schema
 terraform providers schema -json > schema.json
 
 # 2. Generate Terranix modules
-terranix-codegen --input schema.json --output ./terranix-modules
+cabal run terranix-codegen -- --input schema.json --output ./terranix-modules
+
+# Or from stdin:
+terraform providers schema -json | cabal run terranix-codegen -- -o ./terranix-modules
 
 # 3. Use in your Terranix config
 cat > config.nix <<EOF
 {
-  imports = [ ./terranix-modules/aws ];
+  imports = [ ./terranix-modules/registry.terraform.io/hashicorp/aws ];
 
   resource.aws_instance.web = {
     ami = "ami-123456";
@@ -151,9 +152,20 @@ Assembles complete NixOS modules from schemas:
 
 See [`lib/TerranixCodegen/ModuleGenerator.hs`](./lib/TerranixCodegen/ModuleGenerator.hs).
 
-### 5. Documentation Generation (Planned)
+### 5. File Organization (Complete)
 
-Creates mdBook documentation with:
+Organizes generated modules into a clean directory structure:
+
+- Creates provider directories with proper nesting
+- Generates `default.nix` import files at each level
+- Writes individual module files for resources and data sources
+- Pretty-prints Nix expressions using hnix
+
+See [`lib/TerranixCodegen/FileOrganizer.hs`](./lib/TerranixCodegen/FileOrganizer.hs) and [`test/FileOrganizerSpec.hs`](./test/FileOrganizerSpec.hs).
+
+### 6. Documentation Generation (Planned)
+
+Future enhancement to create mdBook documentation with:
 
 - Searchable resource reference
 - Usage examples
@@ -221,15 +233,17 @@ terranix-codegen/
 │   ├── TypeMapper.hs          # CtyType → Nix type conversion (✅ complete)
 │   ├── OptionBuilder.hs       # SchemaAttribute → mkOption (✅ complete)
 │   ├── ModuleGenerator.hs     # Complete module generation (✅ complete)
+│   ├── FileOrganizer.hs       # File organization and writing (✅ complete)
 │   └── PrettyPrint.hs         # Nix expression pretty-printing
 ├── test/                      # Test suite
 │   ├── TypeMapperSpec.hs      # Type mapper tests (25/25 ✅)
 │   ├── OptionBuilderSpec.hs   # Option builder tests (31/31 ✅)
 │   ├── ModuleGeneratorSpec.hs # Module generator tests (11/11 ✅)
+│   ├── FileOrganizerSpec.hs   # File organizer tests (20/20 ✅)
 │   └── TestUtils.hs           # Shared test utilities
 ├── app/                       # Executables
-│   ├── Main.hs
-│   └── SchemaPrinter.hs
+│   ├── Main.hs                # CLI application (✅ complete)
+│   └── SchemaPrinter.hs       # Schema inspection tool
 ├── docs/                      # Design documentation
 │   └── src/
 │       ├── introduction.md
@@ -264,13 +278,15 @@ Contributions are welcome! This project is actively being developed. Progress so
 - [x] Implement Type Mapper (CtyType → Nix types)
 - [x] Implement Option Builder (SchemaAttribute → mkOption)
 - [x] Implement Module Generator (assembles complete modules)
-- [x] Write comprehensive tests (67/67 passing)
+- [x] Implement File Organizer (creates directory structure)
+- [x] Add CLI with argument parsing
+- [x] Write comprehensive tests (86/86 passing)
 - [x] Create custom `types.tupleOf` implementation
-- [ ] Implement File Organizer (creates directory structure)
-- [ ] Implement documentation generator
-- [ ] Add CLI with argument parsing
+- [ ] Implement documentation generator (mdBook)
+- [ ] Add resource/provider filtering to CLI
 - [ ] Add CI/CD pipeline
 - [ ] Generate modules for popular providers (AWS, GCP, Azure)
+- [ ] Publish to nixpkgs
 
 Please open an issue before starting major work to discuss the approach.
 
