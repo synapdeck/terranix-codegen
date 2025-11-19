@@ -366,12 +366,21 @@ terranix-codegen \
   --output ./terranix-modules
 ```
 
+To inspect a schema without generating modules:
+
+```bash
+terranix-codegen --print-schema < schema.json
+# Or:
+terranix-codegen -i schema.json -p
+```
+
 ### CLI Arguments
 
 | Flag | Description | Default |
-| ----------------------- | --------------------------------------- | ------------- |
+| ------------------------- | --------------------------------------- | ------------- |
 | `--input FILE`, `-i` | Input schema JSON (or stdin) | stdin |
 | `--output DIR`, `-o` | Output directory | `./providers` |
+| `--print-schema`, `-p` | Pretty-print schema instead of generating modules | N/A |
 
 **Future enhancements:**
 

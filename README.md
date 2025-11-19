@@ -15,7 +15,7 @@
 - ✅ **Option Builder**: Complete (SchemaAttribute → mkOption conversion) - 31 tests passing
 - ✅ **Module Generator**: Complete (assembles complete NixOS modules) - 11 tests passing
 - ✅ **File Organizer**: Complete (creates directory structure and files) - 20 tests passing
-- ✅ **CLI**: Complete (optparse-applicative with --input/-i and --output/-o flags)
+- ✅ **CLI**: Complete (optparse-applicative with --input/-i, --output/-o, and --print-schema/-p flags)
 - ✅ **Design documentation**: Architecture defined and documented
 - 🔨 **Documentation generation**: Not yet implemented (future enhancement)
 
@@ -94,6 +94,23 @@ EOF
 terranix config.nix > config.tf.json
 terraform init && terraform apply
 ```
+
+### Inspecting Schemas
+
+To inspect and pretty-print a provider schema without generating modules:
+
+```bash
+# Pretty-print schema from stdin
+terraform providers schema -json | cabal run terranix-codegen -- --print-schema
+
+# Pretty-print schema from file
+cabal run terranix-codegen -- -i schema.json -p
+
+# Or with Nix:
+terraform providers schema -json | nix run . -- --print-schema
+```
+
+This is useful for understanding provider schemas and debugging generation issues.
 
 ## How It Works
 
@@ -242,8 +259,7 @@ terranix-codegen/
 │   ├── FileOrganizerSpec.hs   # File organizer tests (20/20 ✅)
 │   └── TestUtils.hs           # Shared test utilities
 ├── app/                       # Executables
-│   ├── Main.hs                # CLI application (✅ complete)
-│   └── SchemaPrinter.hs       # Schema inspection tool
+│   └── Main.hs                # CLI application with --print-schema flag (✅ complete)
 ├── docs/                      # Design documentation
 │   └── src/
 │       ├── introduction.md

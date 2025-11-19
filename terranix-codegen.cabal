@@ -64,21 +64,6 @@ executable terranix-codegen
     base ^>=4.20.2.0,
     bytestring ^>=0.12,
     optparse-applicative ^>=0.18,
-    terranix-codegen,
-
-  default-extensions:
-    OverloadedStrings
-
-  hs-source-dirs: app
-  default-language: GHC2024
-
-executable schema-printer
-  -- cabal-gild: discover
-  import: warnings
-  main-is: SchemaPrinter.hs
-  build-depends:
-    base ^>=4.20,
-    bytestring ^>=0.12,
     prettyprinter-ansi-terminal ^>=1.1,
     terranix-codegen,
 

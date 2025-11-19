@@ -151,7 +151,7 @@ Creates mdBook documentation:
 - ✅ **Option Builder**: Complete with 31 passing tests (including nested attributes)
 - ✅ **Module Generator**: Complete with 11 passing tests
 - ✅ **File Organizer**: Complete with 20 passing tests (86 total)
-- ✅ **CLI**: Complete with optparse-applicative
+- ✅ **CLI**: Complete with optparse-applicative (--input, --output, --print-schema flags)
 - 🔨 **Documentation generation**: Not yet implemented
 
 ## Quick Start
@@ -185,6 +185,12 @@ terranix terranix-config.nix > config.tf.json
 # 5. Apply with Terraform
 terraform init
 terraform apply
+```
+
+**Tip**: To inspect a schema without generating modules, use the `--print-schema` flag:
+
+```bash
+terraform providers schema -json | cabal run terranix-codegen -- --print-schema
 ```
 
 ## Documentation
