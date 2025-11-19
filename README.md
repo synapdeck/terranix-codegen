@@ -8,13 +8,16 @@
 
 ## Project Status
 
-**Early Development** - The schema parser is complete, but code generation is not yet implemented.
+**In Development** - Core components are taking shape with schema parsing and foundational code generation complete.
 
-- **Schema parsing**: Complete and tested
-- **Design documentation**: Architecture defined
-- **Code generation**: Not yet implemented
-- **Documentation generation**: Not yet implemented
-- **CLI**: Not yet implemented
+- ✅ **Schema parsing**: Complete and tested
+- ✅ **Type Mapper**: Complete (CtyType → Nix type conversion)
+- ✅ **Option Builder**: Complete (SchemaAttribute → mkOption conversion)
+- ✅ **Design documentation**: Architecture defined and documented
+- 🔨 **Module Generator**: In progress (assembles complete modules)
+- 🔨 **File Organizer**: Not yet implemented
+- 🔨 **Documentation generation**: Not yet implemented
+- 🔨 **CLI**: Not yet implemented
 
 ## What It Does
 
@@ -109,15 +112,21 @@ data ProviderSchema = ProviderSchema
   }
 ```
 
-### 2. Type Mapping (Planned)
+### 2. Type Mapping (Complete)
 
-Maps Terraform's type system to Nix:
+Maps Terraform's type system (go-cty) to Nix:
 
-| Terraform | Nix |
-|-----------|-----|
-| `string` | `types.str` |
-| `list(T)` | `types.listOf (mapType T)` |
-| `object({...})` | `types.submodule { options = {...}; }` |
+| Terraform CtyType | Nix Type |
+|-------------------|----------|
+| `CtyString` | `types.str` |
+| `CtyNumber` | `types.number` |
+| `CtyBool` | `types.bool` |
+| `CtyList T` | `types.listOf (mapType T)` |
+| `CtyMap T` | `types.attrsOf (mapType T)` |
+| `CtyObject {...}` | `types.submodule { options = {...}; }` |
+| `CtyTuple [...]` | [`types.tupleOf [...]`](./nix/lib/tuple.nix) |
+
+See [`lib/TerranixCodegen/TypeMapper.hs`](./lib/TerranixCodegen/TypeMapper.hs) and [Type Mapper documentation](./docs/src/type-mapper.md).
 
 ### 3. Module Generation (Planned)
 
@@ -186,27 +195,38 @@ cabal run terranix-codegen -- --help
 
 ```
 terranix-codegen/
-├── app/
+├── lib/TerranixCodegen/       # Core library
+│   ├── ProviderSchema/        # Schema type definitions (✅ complete)
+│   │   ├── Attribute.hs
+│   │   ├── Block.hs
+│   │   ├── CtyType.hs
+│   │   ├── Function.hs
+│   │   ├── Provider.hs
+│   │   ├── Schema.hs
+│   │   └── Types.hs
+│   ├── TypeMapper.hs          # CtyType → Nix type conversion (✅ complete)
+│   ├── OptionBuilder.hs       # SchemaAttribute → mkOption (✅ complete)
+│   └── PrettyPrint.hs         # Nix expression pretty-printing
+├── test/                      # Test suite
+│   ├── TypeMapperSpec.hs      # Type mapper tests (18/18 ✅)
+│   ├── OptionBuilderSpec.hs   # Option builder tests (24/24 ✅)
+│   └── TestUtils.hs           # Shared test utilities
+├── app/                       # Executables
 │   ├── Main.hs
-│   └── TerranixCodegen/
-│       ├── ProviderSchema/    # Schema type definitions (complete)
-│       │   ├── Attribute.hs
-│       │   ├── Block.hs
-│       │   ├── CtyType.hs
-│       │   ├── Function.hs
-│       │   ├── Provider.hs
-│       │   ├── Schema.hs
-│       │   └── Types.hs
-│       ├── Generator/         # Code generation (to be implemented)
-│       └── Docs/              # Documentation generation (to be implemented)
+│   └── SchemaPrinter.hs
 ├── docs/                      # Design documentation
 │   └── src/
 │       ├── introduction.md
 │       ├── design-overview.md
+│       ├── type-mapper.md
+│       ├── option-builder.md
 │       ├── examples.md
 │       └── documentation-generation.md
-├── vendor/
-│   └── terraform-json/        # Reference Go implementation
+├── nix/                       # Nix utilities
+│   └── lib/
+│       ├── tuple.nix          # Custom tupleOf type implementation
+│       └── tuple.test.nix
+├── vendor/                    # Vendored dependencies
 ├── flake.nix                  # Nix flake
 ├── terranix-codegen.cabal    # Cabal package definition
 └── README.md                  # This file
@@ -222,13 +242,17 @@ terranix-codegen/
 
 ## Contributing
 
-Contributions are welcome! This project is in early development, and there's plenty of work to do:
+Contributions are welcome! This project is actively being developed. Progress so far:
 
-- [ ] Implement Nix AST types
-- [ ] Implement module generator
+- [x] Implement Nix AST types (using hnix)
+- [x] Implement Type Mapper (CtyType → Nix types)
+- [x] Implement Option Builder (SchemaAttribute → mkOption)
+- [x] Write comprehensive tests (42/42 passing)
+- [x] Create custom `types.tupleOf` implementation
+- [ ] Implement Module Generator (assembles complete modules)
+- [ ] Implement File Organizer (creates directory structure)
 - [ ] Implement documentation generator
 - [ ] Add CLI with argument parsing
-- [ ] Write tests for generation logic
 - [ ] Add CI/CD pipeline
 - [ ] Generate modules for popular providers (AWS, GCP, Azure)
 
