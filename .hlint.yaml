@@ -1,0 +1,9 @@
+---
+# HLint configuration for terranix-codegen
+
+# Ignore parse errors in test files that use QuasiQuotes
+# (hlint doesn't parse them correctly)
+- ignore: {name: "Parse error"}
+
+# Allow _ in import names for qualified imports
+- ignore: {name: "Use fewer imports"}

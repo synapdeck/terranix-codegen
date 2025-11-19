@@ -7,7 +7,11 @@
     haskellProjects.default = {
       devShell = {
         tools = hp: {
-          inherit (hp) cabal-gild;
+          inherit
+            (hp)
+            cabal-gild
+            hspec-discover
+            ;
         };
       };
 

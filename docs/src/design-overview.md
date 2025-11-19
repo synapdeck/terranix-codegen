@@ -52,12 +52,16 @@ The Terranix Module Generator is a tool that automatically generates [Terranix](
    - Parses Terraform provider schema JSON
    - Validates schema structure
    - Provides strongly-typed Haskell representation
+   - Location: `lib/TerranixCodegen/ProviderSchema/`
 
-1. **Type Mapper** (🔨 To Build)
+1. **Type Mapper** (✅ Complete)
 
    - Maps Terraform `CtyType` to Nix type expressions
    - Handles primitive, collection, and structural types
    - Preserves type constraints and metadata
+   - Supports optional field wrapping with `types.nullOr`
+   - Location: `lib/TerranixCodegen/TypeMapper.hs`
+   - Tests: `test/TypeMapperSpec.hs` (18/18 passing)
 
 1. **Option Builder** (🔨 To Build)
 

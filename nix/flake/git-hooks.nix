@@ -13,20 +13,28 @@
       hooks = {
         alejandra.enable = true;
         deadnix.enable = true;
-        statix.enable = true;
+        statix = {
+          enable = true;
+          settings.ignore = [
+            "vendor/**/*"
+          ];
+        };
 
         cabal-gild.enable = true;
         fourmolu = {
           enable = true;
           package = config.fourmolu.wrapper;
         };
-        hlint.enable = true;
+        hlint = {
+          enable = true;
+          args = ["-XQuasiQuotes"];
+        };
 
         mdformat.enable = true;
       };
 
       excludes = [
-        "^vendor/.*"
+        "vendor/.*"
       ];
 
       package = pkgs.prek;
@@ -42,6 +50,11 @@
       haddock-style = "multi-line";
       newlines-between-decls = 1;
       extensions = ["ImportQualifiedPost"];
+    };
+
+    apps.update-pre-commit = {
+      type = "app";
+      program = ''${pkgs.writeShellScript "update-pre-commit" config.pre-commit.installationScript}'';
     };
   };
 }

@@ -31,12 +31,14 @@ library
     TerranixCodegen.ProviderSchema.Provider
     TerranixCodegen.ProviderSchema.Schema
     TerranixCodegen.ProviderSchema.Types
+    TerranixCodegen.TypeMapper
 
   build-depends:
     aeson ^>=2.2.3.0,
     base ^>=4.20.2.0,
     bytestring ^>=0.12,
     containers ^>=0.7,
+    data-fix ^>=0.3,
     hnix ^>=0.17.0,
     prettyprinter ^>=1.7.1,
     prettyprinter-ansi-terminal ^>=1.1.3,
@@ -77,4 +79,29 @@ executable schema-printer
     OverloadedStrings
 
   hs-source-dirs: app
+  default-language: GHC2024
+
+test-suite terranix-codegen-tests
+  -- cabal-gild: discover
+  import: warnings
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  other-modules:
+    TypeMapperSpec
+
+  build-depends:
+    base ^>=4.20,
+    containers ^>=0.7,
+    hnix ^>=0.17,
+    hspec ^>=2.11,
+    terranix-codegen,
+
+  build-tool-depends:
+    hspec-discover:hspec-discover ^>=2.11
+
+  default-extensions:
+    OverloadedStrings
+    QuasiQuotes
+
+  hs-source-dirs: test
   default-language: GHC2024

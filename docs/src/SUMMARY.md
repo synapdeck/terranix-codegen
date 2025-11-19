@@ -7,3 +7,7 @@
 - [Design Overview](./design-overview.md)
 - [Transformation Examples](./examples.md)
 - [Documentation Generation](./documentation-generation.md)
+
+# Implementation
+
+- [Type Mapper](./type-mapper.md)

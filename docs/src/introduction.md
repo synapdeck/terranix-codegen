@@ -99,18 +99,27 @@ The schema parser reads Terraform's JSON schema format and converts it into Hask
 
 See [`app/TerranixCodegen/ProviderSchema/`](../../app/TerranixCodegen/ProviderSchema/) for the complete type definitions.
 
-### 2. Type Mapping (🔨 To Build)
+### 2. Type Mapping (✅ Complete)
 
-Maps Terraform types to Nix types:
+Maps Terraform types to Nix types using hnix AST generation:
 
 | Terraform | Nix |
 |-----------|-----|
 | `string` | `types.str` |
 | `number` | `types.number` |
 | `bool` | `types.bool` |
+| `dynamic` | `types.anything` |
 | `list(T)` | `types.listOf (mapType T)` |
+| `set(T)` | `types.listOf (mapType T)` |
 | `map(T)` | `types.attrsOf (mapType T)` |
 | `object({...})` | `types.submodule { options = {...}; }` |
+| `tuple([...])` | `types.listOf types.anything` |
+
+Implementation includes:
+
+- Full support for nested types
+- Optional field handling with `types.nullOr`
+- Comprehensive test coverage with quasiquoter-based assertions
 
 ### 3. Module Generation (🔨 To Build)
 
@@ -132,11 +141,14 @@ Creates mdBook documentation:
 
 ## Project Status
 
-**Current State**: Early development
+**Current State**: Active development
 
 - ✅ **Schema parsing**: Complete and tested
 - ✅ **Design documentation**: Architecture defined
-- 🔨 **Code generation**: Not yet implemented
+- ✅ **Type Mapper**: Complete with 18 passing tests
+- 🔨 **Option Builder**: Not yet implemented
+- 🔨 **Module Generator**: Not yet implemented
+- 🔨 **File Organizer**: Not yet implemented
 - 🔨 **Documentation generation**: Not yet implemented
 - 🔨 **CLI**: Not yet implemented
 
