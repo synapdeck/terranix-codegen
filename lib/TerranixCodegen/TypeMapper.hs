@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module TerranixCodegen.TypeMapper (
   mapCtyTypeToNix,
   mapCtyTypeToNixWithOptional,

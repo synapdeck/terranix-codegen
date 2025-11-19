@@ -21,6 +21,7 @@ library
   -- cabal-gild: discover
   import: warnings
   exposed-modules:
+    TerranixCodegen.ModuleGenerator
     TerranixCodegen.OptionBuilder
     TerranixCodegen.PrettyPrint
     TerranixCodegen.ProviderSchema
@@ -88,6 +89,7 @@ test-suite terranix-codegen-tests
   type: exitcode-stdio-1.0
   main-is: Main.hs
   other-modules:
+    ModuleGeneratorSpec
     OptionBuilderSpec
     TestUtils
     TypeMapperSpec

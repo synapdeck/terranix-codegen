@@ -73,11 +73,14 @@ The Terranix Module Generator is a tool that automatically generates [Terranix](
    - Location: `lib/TerranixCodegen/OptionBuilder.hs`
    - Tests: `test/OptionBuilderSpec.hs` (31/31 passing)
 
-1. **Module Generator** (🔨 To Build)
+1. **Module Generator** (✅ Complete)
 
-   - Assembles complete NixOS modules
+   - Assembles complete NixOS modules from schemas
    - Handles nested blocks recursively
-   - Manages different nesting modes (single, list, map, etc.)
+   - Manages all nesting modes (single, group, list, set, map)
+   - Generates resource, data source, and provider modules
+   - Location: `lib/TerranixCodegen/ModuleGenerator.hs`
+   - Tests: `test/ModuleGeneratorSpec.hs` (11/11 passing)
 
 1. **File Organizer** (🔨 To Build)
 

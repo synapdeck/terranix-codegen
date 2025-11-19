@@ -8,13 +8,13 @@
 
 ## Project Status
 
-**In Development** - Core components are taking shape with schema parsing and foundational code generation complete.
+**In Development** - Core code generation pipeline complete! Now working on file organization and CLI.
 
 - ✅ **Schema parsing**: Complete and tested
 - ✅ **Type Mapper**: Complete (CtyType → Nix type conversion)
 - ✅ **Option Builder**: Complete (SchemaAttribute → mkOption conversion)
+- ✅ **Module Generator**: Complete (assembles complete NixOS modules)
 - ✅ **Design documentation**: Architecture defined and documented
-- 🔨 **Module Generator**: In progress (assembles complete modules)
 - 🔨 **File Organizer**: Not yet implemented
 - 🔨 **Documentation generation**: Not yet implemented
 - 🔨 **CLI**: Not yet implemented
@@ -128,16 +128,30 @@ Maps Terraform's type system (go-cty) to Nix:
 
 See [`lib/TerranixCodegen/TypeMapper.hs`](./lib/TerranixCodegen/TypeMapper.hs) and [Type Mapper documentation](./docs/src/type-mapper.md).
 
-### 3. Module Generation (Planned)
+### 3. Option Building (Complete)
 
-Generates NixOS modules with:
+Converts schema attributes to NixOS `mkOption` expressions with:
 
-- Proper types for all attributes
-- Documentation from schema descriptions
-- Validation for required/optional fields
-- Support for nested blocks and complex types
+- Type mapping using TypeMapper
+- Default value generation
+- Comprehensive descriptions with metadata
+- Support for nested attributes with all nesting modes
 
-### 4. Documentation Generation (Planned)
+See [`lib/TerranixCodegen/OptionBuilder.hs`](./lib/TerranixCodegen/OptionBuilder.hs) and [Option Builder documentation](./docs/src/option-builder.md).
+
+### 4. Module Generation (Complete)
+
+Assembles complete NixOS modules from schemas:
+
+- `generateResourceModule`: Creates `options.resource.{type}` modules
+- `generateDataSourceModule`: Creates `options.data.{type}` modules
+- `generateProviderModule`: Creates provider configuration modules
+- Handles nested blocks recursively with proper nesting modes
+- Supports all 5 nesting modes (single, group, list, set, map)
+
+See [`lib/TerranixCodegen/ModuleGenerator.hs`](./lib/TerranixCodegen/ModuleGenerator.hs).
+
+### 5. Documentation Generation (Planned)
 
 Creates mdBook documentation with:
 
@@ -206,10 +220,12 @@ terranix-codegen/
 │   │   └── Types.hs
 │   ├── TypeMapper.hs          # CtyType → Nix type conversion (✅ complete)
 │   ├── OptionBuilder.hs       # SchemaAttribute → mkOption (✅ complete)
+│   ├── ModuleGenerator.hs     # Complete module generation (✅ complete)
 │   └── PrettyPrint.hs         # Nix expression pretty-printing
 ├── test/                      # Test suite
-│   ├── TypeMapperSpec.hs      # Type mapper tests (18/18 ✅)
-│   ├── OptionBuilderSpec.hs   # Option builder tests (24/24 ✅)
+│   ├── TypeMapperSpec.hs      # Type mapper tests (25/25 ✅)
+│   ├── OptionBuilderSpec.hs   # Option builder tests (31/31 ✅)
+│   ├── ModuleGeneratorSpec.hs # Module generator tests (11/11 ✅)
 │   └── TestUtils.hs           # Shared test utilities
 ├── app/                       # Executables
 │   ├── Main.hs
@@ -247,9 +263,9 @@ Contributions are welcome! This project is actively being developed. Progress so
 - [x] Implement Nix AST types (using hnix)
 - [x] Implement Type Mapper (CtyType → Nix types)
 - [x] Implement Option Builder (SchemaAttribute → mkOption)
-- [x] Write comprehensive tests (42/42 passing)
+- [x] Implement Module Generator (assembles complete modules)
+- [x] Write comprehensive tests (67/67 passing)
 - [x] Create custom `types.tupleOf` implementation
-- [ ] Implement Module Generator (assembles complete modules)
 - [ ] Implement File Organizer (creates directory structure)
 - [ ] Implement documentation generator
 - [ ] Add CLI with argument parsing

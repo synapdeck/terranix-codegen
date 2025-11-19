@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module TerranixCodegen.OptionBuilder (
   buildOption,
   attributesToSubmodule,

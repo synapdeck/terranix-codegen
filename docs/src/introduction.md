@@ -121,14 +121,16 @@ Implementation includes:
 - Optional field handling with `types.nullOr`
 - Comprehensive test coverage with quasiquoter-based assertions
 
-### 3. Module Generation (🔨 To Build)
+### 3. Module Generation (✅ Complete)
 
-Generates NixOS modules from schemas:
+Generates complete NixOS modules from schemas:
 
-- Converts attributes to options
-- Handles nested blocks recursively
+- Converts attributes to options using OptionBuilder
+- Handles nested blocks recursively with all nesting modes
 - Preserves metadata (descriptions, deprecations)
-- Generates proper defaults (null for optional, none for required)
+- Generates proper defaults based on nesting mode
+- Creates resource, data source, and provider modules
+- Full test coverage (11/11 tests passing)
 
 ### 4. Documentation Generation (🔨 To Build)
 
@@ -141,13 +143,13 @@ Creates mdBook documentation:
 
 ## Project Status
 
-**Current State**: Active development
+**Current State**: Core generation pipeline complete!
 
 - ✅ **Schema parsing**: Complete and tested
 - ✅ **Design documentation**: Architecture defined
-- ✅ **Type Mapper**: Complete with 18 passing tests
+- ✅ **Type Mapper**: Complete with 25 passing tests
 - ✅ **Option Builder**: Complete with 31 passing tests (including nested attributes)
-- 🔨 **Module Generator**: Not yet implemented
+- ✅ **Module Generator**: Complete with 11 passing tests (67 total)
 - 🔨 **File Organizer**: Not yet implemented
 - 🔨 **Documentation generation**: Not yet implemented
 - 🔨 **CLI**: Not yet implemented
