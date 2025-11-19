@@ -8,3 +8,5 @@ title = "terranix-codegen"
 default-theme = "latte"
 preferred-dark-theme = "frappe"
 additional-css = ["./theme/catppuccin.css"]
+git-repository-url = "https://github.com/synapdeck/terranix-codegen"
+edit-url-template = "https://github.com/synapdeck/terranix-codegen/edit/master/{path}"
