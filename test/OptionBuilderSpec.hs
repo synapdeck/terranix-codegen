@@ -1,11 +1,13 @@
 module OptionBuilderSpec (spec) where
 
+import Data.Map.Strict qualified as Map
 import Nix.TH (nix)
 import Test.Hspec
 
 import TerranixCodegen.OptionBuilder
 import TerranixCodegen.ProviderSchema.Attribute
 import TerranixCodegen.ProviderSchema.CtyType
+import TerranixCodegen.ProviderSchema.Types (SchemaNestingMode (..))
 import TestUtils (shouldMapTo)
 
 -- | Helper to create a minimal SchemaAttribute
@@ -451,5 +453,241 @@ spec = do
                 This value is computed by the provider.
               '';
               readOnly = true;
+            }
+          |]
+
+    describe "nested attributes" $ do
+      it "builds mkOption for required nested attribute with single nesting mode" $ do
+        let nestedAttr =
+              SchemaNestedAttributeType
+                { nestedAttributes =
+                    Just $
+                      Map.fromList
+                        [ ("host", emptyAttr {attributeType = Just CtyString, attributeRequired = Just True})
+                        , ("port", emptyAttr {attributeType = Just CtyNumber, attributeOptional = Just True})
+                        ]
+                , nestedNestingMode = Just NestingSingle
+                , nestedMinItems = Nothing
+                , nestedMaxItems = Nothing
+                }
+            attr =
+              emptyAttr
+                { attributeNestedType = Just nestedAttr
+                , attributeDescription = Just "Connection configuration"
+                , attributeRequired = Just True
+                }
+        buildOption "connection" attr
+          `shouldMapTo` [nix|
+            mkOption {
+              type = types.submodule {
+                options = {
+                  host = mkOption {
+                    type = types.str;
+                  };
+                  port = mkOption {
+                    type = types.nullOr types.number;
+                    default = null;
+                  };
+                };
+              };
+              description = "Connection configuration";
+            }
+          |]
+
+      it "builds mkOption for optional nested attribute with single nesting mode" $ do
+        let nestedAttr =
+              SchemaNestedAttributeType
+                { nestedAttributes =
+                    Just $
+                      Map.fromList
+                        [ ("enabled", emptyAttr {attributeType = Just CtyBool, attributeRequired = Just True})
+                        ]
+                , nestedNestingMode = Just NestingSingle
+                , nestedMinItems = Nothing
+                , nestedMaxItems = Nothing
+                }
+            attr =
+              emptyAttr
+                { attributeNestedType = Just nestedAttr
+                , attributeDescription = Just "Monitoring configuration"
+                , attributeOptional = Just True
+                }
+        buildOption "monitoring" attr
+          `shouldMapTo` [nix|
+            mkOption {
+              type = types.nullOr (types.submodule {
+                options = {
+                  enabled = mkOption {
+                    type = types.bool;
+                  };
+                };
+              });
+              default = null;
+              description = "Monitoring configuration";
+            }
+          |]
+
+      it "builds mkOption for nested attribute with list nesting mode" $ do
+        let nestedAttr =
+              SchemaNestedAttributeType
+                { nestedAttributes =
+                    Just $
+                      Map.fromList
+                        [ ("device_name", emptyAttr {attributeType = Just CtyString, attributeRequired = Just True})
+                        , ("volume_size", emptyAttr {attributeType = Just CtyNumber, attributeOptional = Just True})
+                        ]
+                , nestedNestingMode = Just NestingList
+                , nestedMinItems = Nothing
+                , nestedMaxItems = Nothing
+                }
+            attr =
+              emptyAttr
+                { attributeNestedType = Just nestedAttr
+                , attributeDescription = Just "Block device mappings"
+                , attributeRequired = Just True
+                }
+        buildOption "block_devices" attr
+          `shouldMapTo` [nix|
+            mkOption {
+              type = types.listOf (types.submodule {
+                options = {
+                  device_name = mkOption {
+                    type = types.str;
+                  };
+                  volume_size = mkOption {
+                    type = types.nullOr types.number;
+                    default = null;
+                  };
+                };
+              });
+              description = "Block device mappings";
+            }
+          |]
+
+      it "builds mkOption for nested attribute with set nesting mode" $ do
+        let nestedAttr =
+              SchemaNestedAttributeType
+                { nestedAttributes =
+                    Just $
+                      Map.fromList
+                        [ ("name", emptyAttr {attributeType = Just CtyString, attributeRequired = Just True})
+                        ]
+                , nestedNestingMode = Just NestingSet
+                , nestedMinItems = Nothing
+                , nestedMaxItems = Nothing
+                }
+            attr =
+              emptyAttr
+                { attributeNestedType = Just nestedAttr
+                , attributeDescription = Just "Security group set"
+                , attributeOptional = Just True
+                }
+        buildOption "security_groups" attr
+          `shouldMapTo` [nix|
+            mkOption {
+              type = types.nullOr (types.listOf (types.submodule {
+                options = {
+                  name = mkOption {
+                    type = types.str;
+                  };
+                };
+              }));
+              default = null;
+              description = "Security group set";
+            }
+          |]
+
+      it "builds mkOption for nested attribute with map nesting mode" $ do
+        let nestedAttr =
+              SchemaNestedAttributeType
+                { nestedAttributes =
+                    Just $
+                      Map.fromList
+                        [ ("value", emptyAttr {attributeType = Just CtyString, attributeRequired = Just True})
+                        , ("description", emptyAttr {attributeType = Just CtyString, attributeOptional = Just True})
+                        ]
+                , nestedNestingMode = Just NestingMap
+                , nestedMinItems = Nothing
+                , nestedMaxItems = Nothing
+                }
+            attr =
+              emptyAttr
+                { attributeNestedType = Just nestedAttr
+                , attributeDescription = Just "Environment variables"
+                , attributeOptional = Just True
+                }
+        buildOption "env" attr
+          `shouldMapTo` [nix|
+            mkOption {
+              type = types.nullOr (types.attrsOf (types.submodule {
+                options = {
+                  description = mkOption {
+                    type = types.nullOr types.str;
+                    default = null;
+                  };
+                  value = mkOption {
+                    type = types.str;
+                  };
+                };
+              }));
+              default = null;
+              description = "Environment variables";
+            }
+          |]
+
+      it "builds mkOption for nested attribute with group nesting mode" $ do
+        let nestedAttr =
+              SchemaNestedAttributeType
+                { nestedAttributes =
+                    Just $
+                      Map.fromList
+                        [ ("key", emptyAttr {attributeType = Just CtyString, attributeRequired = Just True})
+                        ]
+                , nestedNestingMode = Just NestingGroup
+                , nestedMinItems = Nothing
+                , nestedMaxItems = Nothing
+                }
+            attr =
+              emptyAttr
+                { attributeNestedType = Just nestedAttr
+                , attributeDescription = Just "Encryption configuration"
+                , attributeRequired = Just True
+                }
+        buildOption "encryption" attr
+          `shouldMapTo` [nix|
+            mkOption {
+              type = types.submodule {
+                options = {
+                  key = mkOption {
+                    type = types.str;
+                  };
+                };
+              };
+              description = "Encryption configuration";
+            }
+          |]
+
+      it "handles nested attribute with empty attributes map" $ do
+        let nestedAttr =
+              SchemaNestedAttributeType
+                { nestedAttributes = Just Map.empty
+                , nestedNestingMode = Just NestingSingle
+                , nestedMinItems = Nothing
+                , nestedMaxItems = Nothing
+                }
+            attr =
+              emptyAttr
+                { attributeNestedType = Just nestedAttr
+                , attributeDescription = Just "Empty config"
+                , attributeOptional = Just True
+                }
+        buildOption "config" attr
+          `shouldMapTo` [nix|
+            mkOption {
+              type = types.nullOr (types.submodule {
+                options = {};
+              });
+              default = null;
+              description = "Empty config";
             }
           |]

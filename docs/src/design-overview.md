@@ -69,8 +69,9 @@ The Terranix Module Generator is a tool that automatically generates [Terranix](
    - Generates documentation from schema descriptions
    - Handles required/optional/computed semantics
    - Supports metadata (deprecated, sensitive, write-only)
+   - Fully supports nested attributes with all nesting modes
    - Location: `lib/TerranixCodegen/OptionBuilder.hs`
-   - Tests: `test/OptionBuilderSpec.hs` (24/24 passing)
+   - Tests: `test/OptionBuilderSpec.hs` (31/31 passing)
 
 1. **Module Generator** (🔨 To Build)
 

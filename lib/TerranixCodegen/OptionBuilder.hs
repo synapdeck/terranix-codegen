@@ -2,9 +2,12 @@
 
 module TerranixCodegen.OptionBuilder (
   buildOption,
+  attributesToSubmodule,
 ) where
 
 import Data.Fix (Fix (..))
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -12,6 +15,7 @@ import Nix.Expr.Shorthands
 import Nix.Expr.Types
 
 import TerranixCodegen.ProviderSchema.Attribute
+import TerranixCodegen.ProviderSchema.Types (SchemaNestingMode (..))
 import TerranixCodegen.TypeMapper (mapCtyTypeToNixWithOptional)
 
 {- | Build a NixOS mkOption expression from a SchemaAttribute.
@@ -95,12 +99,12 @@ buildType attr =
     (Just ctyType, Nothing) ->
       mapCtyTypeToNixWithOptional (isOptionalAttribute attr) ctyType
     -- Nested attribute type (requires submodule handling)
-    -- For now, we'll treat it as types.attrs as a placeholder
-    -- This will be properly implemented when we build the Module Generator
-    (Nothing, Just _nestedType) ->
-      if isOptionalAttribute attr
-        then nixTypes "nullOr" `mkApp` nixTypes "attrs"
-        else nixTypes "attrs"
+    (Nothing, Just nestedType) ->
+      let submodule = buildNestedAttributeType nestedType
+          baseType = applyNestingMode (fromMaybe NestingSingle (nestedNestingMode nestedType)) submodule
+       in if isOptionalAttribute attr
+            then nixTypes "nullOr" `mkApp` baseType
+            else baseType
     -- Both present (shouldn't happen according to schema spec)
     (Just ctyType, Just _) ->
       -- Prefer the direct type
@@ -212,3 +216,69 @@ nixTypes name = mkSym "types" `mkSelect` name
 -- | Helper to build a select expression (attribute access)
 mkSelect :: NExpr -> Text -> NExpr
 mkSelect expr attr = Fix $ NSelect Nothing expr (mkSelector attr)
+
+{- | Build a submodule type from a SchemaNestedAttributeType.
+
+Converts the nested attributes to a types.submodule with options.
+-}
+buildNestedAttributeType :: SchemaNestedAttributeType -> NExpr
+buildNestedAttributeType nestedType =
+  case nestedAttributes nestedType of
+    Just attrs -> attributesToSubmodule attrs
+    Nothing -> nixTypes "attrs" -- Fallback if no attributes defined
+
+{- | Convert a Map of SchemaAttributes to a types.submodule expression.
+
+This creates:
+  types.submodule {
+    options = {
+      attr1 = mkOption { ... };
+      attr2 = mkOption { ... };
+    };
+  }
+-}
+attributesToSubmodule :: Map Text SchemaAttribute -> NExpr
+attributesToSubmodule attrs =
+  nixTypes "submodule" `mkApp` submoduleArg
+  where
+    submoduleArg =
+      Fix $
+        NSet
+          NonRecursive
+          [optionsBinding]
+
+    optionsBinding =
+      NamedVar
+        (mkSelector "options")
+        optionsSet
+        nullPos
+
+    optionsSet =
+      Fix $
+        NSet
+          NonRecursive
+          (map attrToBinding (Map.toList attrs))
+
+    attrToBinding (name, attr) =
+      NamedVar
+        (mkSelector name)
+        (buildOption name attr)
+        nullPos
+
+{- | Apply a nesting mode wrapper to a submodule type.
+
+Maps Terraform nesting modes to Nix type expressions:
+  - NestingSingle: types.submodule (as-is)
+  - NestingGroup: types.submodule (as-is, never null)
+  - NestingList: types.listOf types.submodule
+  - NestingSet: types.listOf types.submodule
+  - NestingMap: types.attrsOf types.submodule
+-}
+applyNestingMode :: SchemaNestingMode -> NExpr -> NExpr
+applyNestingMode mode submodule =
+  case mode of
+    NestingSingle -> submodule
+    NestingGroup -> submodule
+    NestingList -> nixTypes "listOf" `mkApp` submodule
+    NestingSet -> nixTypes "listOf" `mkApp` submodule
+    NestingMap -> nixTypes "attrsOf" `mkApp` submodule

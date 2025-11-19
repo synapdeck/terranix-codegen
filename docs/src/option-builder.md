@@ -331,11 +331,56 @@ buildType attr =
 
 This separation of concerns keeps the Option Builder focused on option structure and metadata, while the Type Mapper handles the complexity of type system mapping.
 
+## Nested Attribute Handling
+
+The Option Builder now fully supports `SchemaNestedAttributeType`, which represents complex nested structures with their own nesting modes and constraints.
+
+### Key Functions
+
+**`buildNestedAttributeType :: SchemaNestedAttributeType -> NExpr`**
+
+- Converts nested attributes to a `types.submodule` with options
+- Recursively processes nested attribute maps
+
+**`attributesToSubmodule :: Map Text SchemaAttribute -> NExpr`**
+
+- Converts a map of attributes to a complete submodule definition
+- Creates the `options = { ... }` structure
+- Recursively calls `buildOption` for each attribute
+
+**`applyNestingMode :: SchemaNestingMode -> NExpr -> NExpr`**
+
+- Wraps submodules according to their nesting mode
+- Handles all five nesting modes: Single, Group, List, Set, Map
+
+### Example
+
+```haskell
+-- Nested attribute with list nesting mode
+SchemaNestedAttributeType
+  { nestedAttributes = Just $ Map.fromList
+      [ ("device_name", attr { attributeType = CtyString, required = True })
+      , ("volume_size", attr { attributeType = CtyNumber, optional = True })
+      ]
+  , nestedNestingMode = Just NestingList
+  }
+```
+
+Generates:
+
+```nix
+types.listOf (types.submodule {
+  options = {
+    device_name = mkOption { type = types.str; };
+    volume_size = mkOption { type = types.nullOr types.number; default = null; };
+  };
+})
+```
+
 ## Future Enhancements
 
 Potential improvements for the Option Builder:
 
-1. **Nested Attribute Support**: Full support for `SchemaNestedAttributeType` (currently uses placeholder `types.attrs`)
 1. **Default Value Inference**: Smart defaults for list/map types based on nesting mode
 1. **Validation Functions**: Generate custom validators for constraints (min/max items, regex patterns)
 1. **Example Values**: Include example configurations in descriptions
@@ -347,9 +392,12 @@ The test suite (`test/OptionBuilderSpec.hs`) covers:
 
 - **Attribute semantics**: Required, optional, computed, and combinations
 - **Type handling**: Primitives, collections, complex types
+- **Nested attributes**: All five nesting modes (Single, Group, List, Set, Map)
 - **Metadata**: Deprecation, sensitivity, write-only flags
 - **Description building**: Single-line, multi-line, metadata combinations
-- **Edge cases**: Missing types, no descriptions, all metadata flags together
+- **Edge cases**: Missing types, no descriptions, all metadata flags together, empty nested attributes
 - **Real-world examples**: Based on AWS provider patterns
+
+**Test Coverage**: 31/31 tests passing (24 original + 7 nested attribute tests)
 
 All tests use the `shouldMapTo` helper from `test/TestUtils.hs` to compare generated Nix expressions with expected output, ignoring source position metadata.
