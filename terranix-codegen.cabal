@@ -21,6 +21,7 @@ library
   -- cabal-gild: discover
   import: warnings
   exposed-modules:
+    TerranixCodegen.OptionBuilder
     TerranixCodegen.PrettyPrint
     TerranixCodegen.ProviderSchema
     TerranixCodegen.ProviderSchema.Attribute
@@ -87,6 +88,8 @@ test-suite terranix-codegen-tests
   type: exitcode-stdio-1.0
   main-is: Main.hs
   other-modules:
+    OptionBuilderSpec
+    TestUtils
     TypeMapperSpec
 
   build-depends:
@@ -95,6 +98,7 @@ test-suite terranix-codegen-tests
     hnix ^>=0.17,
     hspec ^>=2.11,
     terranix-codegen,
+    text ^>=2.1,
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11

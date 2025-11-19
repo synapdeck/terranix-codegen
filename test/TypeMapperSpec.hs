@@ -2,18 +2,12 @@ module TypeMapperSpec (spec) where
 
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
-import Nix.Expr.Types (NExpr, stripPositionInfo)
 import Nix.TH (nix)
 import Test.Hspec
 
 import TerranixCodegen.ProviderSchema.CtyType
 import TerranixCodegen.TypeMapper
-
--- | Custom comparison that strips position info before comparing
-infix 1 `shouldMapTo`
-
-shouldMapTo :: NExpr -> NExpr -> Expectation
-shouldMapTo actual expected = stripPositionInfo actual `shouldBe` stripPositionInfo expected
+import TestUtils (shouldMapTo)
 
 spec :: Spec
 spec = do

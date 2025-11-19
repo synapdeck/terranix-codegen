@@ -63,11 +63,14 @@ The Terranix Module Generator is a tool that automatically generates [Terranix](
    - Location: `lib/TerranixCodegen/TypeMapper.hs`
    - Tests: `test/TypeMapperSpec.hs` (18/18 passing)
 
-1. **Option Builder** (🔨 To Build)
+1. **Option Builder** (✅ Complete)
 
    - Converts schema attributes to NixOS options
    - Generates documentation from schema descriptions
    - Handles required/optional/computed semantics
+   - Supports metadata (deprecated, sensitive, write-only)
+   - Location: `lib/TerranixCodegen/OptionBuilder.hs`
+   - Tests: `test/OptionBuilderSpec.hs` (24/24 passing)
 
 1. **Module Generator** (🔨 To Build)
 
