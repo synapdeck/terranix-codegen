@@ -25,6 +25,10 @@
         mdformat.enable = true;
       };
 
+      excludes = [
+        "^vendor/.*"
+      ];
+
       package = pkgs.prek;
     };
 

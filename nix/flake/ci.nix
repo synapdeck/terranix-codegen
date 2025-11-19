@@ -27,7 +27,7 @@
               }
               {
                 name = "Install Nix";
-                uses = "DeterminateSystems/nix-installer-action@v9";
+                uses = "DeterminateSystems/nix-installer-action@v21";
               }
               {
                 name = "Build book";
@@ -35,7 +35,7 @@
               }
               {
                 name = "Setup Pages";
-                uses = "actions/configure-pages@v4";
+                uses = "actions/configure-pages@v5";
               }
               {
                 name = "Upload artifact";
