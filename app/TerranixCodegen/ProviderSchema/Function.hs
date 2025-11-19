@@ -1,13 +1,12 @@
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData #-}
 
 module TerranixCodegen.ProviderSchema.Function (
   FunctionSignature (..),
   FunctionParameter (..),
 ) where
 
-import Autodocodec (Autodocodec (..), HasCodec (..), object, optionalField, requiredField, (.=))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), withObject, (.:), (.:?))
+import Data.Aeson qualified as Aeson
 import Data.Text qualified as T
 import TerranixCodegen.ProviderSchema.CtyType
 
@@ -23,16 +22,25 @@ data FunctionParameter = FunctionParameter
   -- ^ Type that any argument for this parameter must conform to
   }
   deriving stock (Show, Eq)
-  deriving (FromJSON, ToJSON) via (Autodocodec FunctionParameter)
 
-instance HasCodec FunctionParameter where
-  codec =
-    object "FunctionParameter" $
-      FunctionParameter
-        <$> optionalField "name" "Optional name for the argument" .= functionParameterName
-        <*> optionalField "description" "Optional human-readable description of the argument" .= functionParameterDescription
-        <*> optionalField "is_nullable" "True if null is acceptable value for the argument" .= functionParameterIsNullable
-        <*> requiredField "type" "Type that any argument for this parameter must conform to" .= functionParameterType
+instance ToJSON FunctionParameter where
+  toJSON param =
+    Aeson.object $
+      filter
+        ((/= Aeson.Null) . snd)
+        [ "name" Aeson..= functionParameterName param
+        , "description" Aeson..= functionParameterDescription param
+        , "is_nullable" Aeson..= functionParameterIsNullable param
+        , "type" Aeson..= functionParameterType param
+        ]
+
+instance FromJSON FunctionParameter where
+  parseJSON = withObject "FunctionParameter" $ \o ->
+    FunctionParameter
+      <$> o .:? "name"
+      <*> o .:? "description"
+      <*> o .:? "is_nullable"
+      <*> o .: "type"
 
 -- | FunctionSignature represents a function signature.
 data FunctionSignature = FunctionSignature
@@ -50,15 +58,26 @@ data FunctionSignature = FunctionSignature
   -- ^ The function's variadic parameter if supported
   }
   deriving stock (Show, Eq)
-  deriving (FromJSON, ToJSON) via (Autodocodec FunctionSignature)
 
-instance HasCodec FunctionSignature where
-  codec =
-    object "FunctionSignature" $
-      FunctionSignature
-        <$> optionalField "description" "Optional human-readable description of the function" .= functionSignatureDescription
-        <*> optionalField "summary" "Optional shortened description of the function" .= functionSignatureSummary
-        <*> optionalField "deprecation_message" "Optional deprecation message" .= functionSignatureDeprecationMessage
-        <*> requiredField "return_type" "The function's return type" .= functionSignatureReturnType
-        <*> optionalField "parameters" "The function's fixed positional parameters" .= functionSignatureParameters
-        <*> optionalField "variadic_parameter" "The function's variadic parameter if supported" .= functionSignatureVariadicParameter
+instance ToJSON FunctionSignature where
+  toJSON sig =
+    Aeson.object $
+      filter
+        ((/= Aeson.Null) . snd)
+        [ "description" Aeson..= functionSignatureDescription sig
+        , "summary" Aeson..= functionSignatureSummary sig
+        , "deprecation_message" Aeson..= functionSignatureDeprecationMessage sig
+        , "return_type" Aeson..= functionSignatureReturnType sig
+        , "parameters" Aeson..= functionSignatureParameters sig
+        , "variadic_parameter" Aeson..= functionSignatureVariadicParameter sig
+        ]
+
+instance FromJSON FunctionSignature where
+  parseJSON = withObject "FunctionSignature" $ \o ->
+    FunctionSignature
+      <$> o .:? "description"
+      <*> o .:? "summary"
+      <*> o .:? "deprecation_message"
+      <*> o .: "return_type"
+      <*> o .:? "parameters"
+      <*> o .:? "variadic_parameter"

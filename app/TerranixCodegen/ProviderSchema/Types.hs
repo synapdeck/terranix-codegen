@@ -1,13 +1,11 @@
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData #-}
 
 module TerranixCodegen.ProviderSchema.Types (
   SchemaDescriptionKind (..),
   SchemaNestingMode (..),
 ) where
 
-import Autodocodec (Autodocodec (..), HasCodec (..), bimapCodec, (<?>))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), withText)
 import Data.Text (Text)
 
 -- | SchemaDescriptionKind describes the format type for a particular description field.
@@ -15,21 +13,16 @@ data SchemaDescriptionKind
   = Plain
   | Markdown
   deriving stock (Show, Eq, Ord)
-  deriving (FromJSON, ToJSON) via (Autodocodec SchemaDescriptionKind)
 
-instance HasCodec SchemaDescriptionKind where
-  codec =
-    bimapCodec fromText toText codec
-      <?> "Description format kind (plain or markdown)"
-    where
-      fromText :: Text -> Either String SchemaDescriptionKind
-      fromText "plain" = Right Plain
-      fromText "markdown" = Right Markdown
-      fromText other = Left $ "Expected 'plain' or 'markdown', got: " ++ show other
+instance ToJSON SchemaDescriptionKind where
+  toJSON Plain = toJSON ("plain" :: Text)
+  toJSON Markdown = toJSON ("markdown" :: Text)
 
-      toText :: SchemaDescriptionKind -> Text
-      toText Plain = "plain"
-      toText Markdown = "markdown"
+instance FromJSON SchemaDescriptionKind where
+  parseJSON = withText "SchemaDescriptionKind" $ \case
+    "plain" -> pure Plain
+    "markdown" -> pure Markdown
+    other -> fail $ "Unknown description kind: " <> show other
 
 -- | SchemaNestingMode is the nesting mode for a particular nested schema block.
 data SchemaNestingMode
@@ -44,24 +37,19 @@ data SchemaNestingMode
   | -- | Map of blocks keyed by label
     NestingMap
   deriving stock (Show, Eq, Ord)
-  deriving (FromJSON, ToJSON) via (Autodocodec SchemaNestingMode)
 
-instance HasCodec SchemaNestingMode where
-  codec =
-    bimapCodec fromText toText codec
-      <?> "Nesting mode (single, group, list, set, or map)"
-    where
-      fromText :: Text -> Either String SchemaNestingMode
-      fromText "single" = Right NestingSingle
-      fromText "group" = Right NestingGroup
-      fromText "list" = Right NestingList
-      fromText "set" = Right NestingSet
-      fromText "map" = Right NestingMap
-      fromText other = Left $ "Expected 'single', 'group', 'list', 'set', or 'map', got: " ++ show other
+instance ToJSON SchemaNestingMode where
+  toJSON NestingSingle = toJSON ("single" :: Text)
+  toJSON NestingGroup = toJSON ("group" :: Text)
+  toJSON NestingList = toJSON ("list" :: Text)
+  toJSON NestingSet = toJSON ("set" :: Text)
+  toJSON NestingMap = toJSON ("map" :: Text)
 
-      toText :: SchemaNestingMode -> Text
-      toText NestingSingle = "single"
-      toText NestingGroup = "group"
-      toText NestingList = "list"
-      toText NestingSet = "set"
-      toText NestingMap = "map"
+instance FromJSON SchemaNestingMode where
+  parseJSON = withText "SchemaNestingMode" $ \case
+    "single" -> pure NestingSingle
+    "group" -> pure NestingGroup
+    "list" -> pure NestingList
+    "set" -> pure NestingSet
+    "map" -> pure NestingMap
+    other -> fail $ "Unknown nesting mode: " <> show other

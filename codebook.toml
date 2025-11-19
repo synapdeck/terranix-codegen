@@ -1,1 +1,8 @@
-words = ["terranix"]
+words = [
+    "ansi",
+    "hsep",
+    "provs",
+    "terranix",
+    "vsep",
+    "vstack",
+]

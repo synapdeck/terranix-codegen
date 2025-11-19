@@ -1,13 +1,12 @@
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData #-}
 
 module TerranixCodegen.ProviderSchema.Attribute (
   SchemaAttribute (..),
   SchemaNestedAttributeType (..),
 ) where
 
-import Autodocodec (Autodocodec (..), HasCodec (..), object, optionalField, (.=))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), withObject, (.:?))
+import Data.Aeson qualified as Aeson
 import Data.Map.Strict (Map)
 import Data.Text qualified as T
 import Data.Word (Word64)
@@ -40,22 +39,37 @@ data SchemaAttribute = SchemaAttribute
   -- ^ If true, this attribute is write only and not persisted in state
   }
   deriving stock (Show, Eq)
-  deriving (FromJSON, ToJSON) via (Autodocodec SchemaAttribute)
 
-instance HasCodec SchemaAttribute where
-  codec =
-    object "SchemaAttribute" $
-      SchemaAttribute
-        <$> optionalField "type" "The attribute type (cty.Type)" .= attributeType
-        <*> optionalField "nested_type" "Details about a nested attribute type" .= attributeNestedType
-        <*> optionalField "description" "Description for this attribute" .= attributeDescription
-        <*> optionalField "description_kind" "Format of the description (defaults to plain text)" .= attributeDescriptionKind
-        <*> optionalField "deprecated" "If true, this attribute is deprecated" .= attributeDeprecated
-        <*> optionalField "required" "If true, this attribute must be entered in configuration" .= attributeRequired
-        <*> optionalField "optional" "If true, this attribute is optional" .= attributeOptional
-        <*> optionalField "computed" "If true, this attribute can be set by the provider" .= attributeComputed
-        <*> optionalField "sensitive" "If true, this attribute is sensitive and will not be displayed in logs" .= attributeSensitive
-        <*> optionalField "write_only" "If true, this attribute is write only and not persisted in state" .= attributeWriteOnly
+instance ToJSON SchemaAttribute where
+  toJSON attr =
+    Aeson.object $
+      filter
+        ((/= Aeson.Null) . snd)
+        [ "type" Aeson..= attributeType attr
+        , "nested_type" Aeson..= attributeNestedType attr
+        , "description" Aeson..= attributeDescription attr
+        , "description_kind" Aeson..= attributeDescriptionKind attr
+        , "deprecated" Aeson..= attributeDeprecated attr
+        , "required" Aeson..= attributeRequired attr
+        , "optional" Aeson..= attributeOptional attr
+        , "computed" Aeson..= attributeComputed attr
+        , "sensitive" Aeson..= attributeSensitive attr
+        , "write_only" Aeson..= attributeWriteOnly attr
+        ]
+
+instance FromJSON SchemaAttribute where
+  parseJSON = withObject "SchemaAttribute" $ \o ->
+    SchemaAttribute
+      <$> o .:? "type"
+      <*> o .:? "nested_type"
+      <*> o .:? "description"
+      <*> o .:? "description_kind"
+      <*> o .:? "deprecated"
+      <*> o .:? "required"
+      <*> o .:? "optional"
+      <*> o .:? "computed"
+      <*> o .:? "sensitive"
+      <*> o .:? "write_only"
 
 {- | SchemaNestedAttributeType describes a nested attribute which tracks
 additional metadata beyond what a simple cty.Object could express.
@@ -71,13 +85,22 @@ data SchemaNestedAttributeType = SchemaNestedAttributeType
   -- ^ Upper limit on number of items (not applicable to single nesting mode)
   }
   deriving stock (Show, Eq)
-  deriving (FromJSON, ToJSON) via (Autodocodec SchemaNestedAttributeType)
 
-instance HasCodec SchemaNestedAttributeType where
-  codec =
-    object "SchemaNestedAttributeType" $
-      SchemaNestedAttributeType
-        <$> optionalField "attributes" "Map of nested attributes" .= nestedAttributes
-        <*> optionalField "nesting_mode" "The nesting mode for this attribute" .= nestedNestingMode
-        <*> optionalField "min_items" "Lower limit on number of items (not applicable to single nesting mode)" .= nestedMinItems
-        <*> optionalField "max_items" "Upper limit on number of items (not applicable to single nesting mode)" .= nestedMaxItems
+instance ToJSON SchemaNestedAttributeType where
+  toJSON nested =
+    Aeson.object $
+      filter
+        ((/= Aeson.Null) . snd)
+        [ "attributes" Aeson..= nestedAttributes nested
+        , "nesting_mode" Aeson..= nestedNestingMode nested
+        , "min_items" Aeson..= nestedMinItems nested
+        , "max_items" Aeson..= nestedMaxItems nested
+        ]
+
+instance FromJSON SchemaNestedAttributeType where
+  parseJSON = withObject "SchemaNestedAttributeType" $ \o ->
+    SchemaNestedAttributeType
+      <$> o .:? "attributes"
+      <*> o .:? "nesting_mode"
+      <*> o .:? "min_items"
+      <*> o .:? "max_items"

@@ -1,15 +1,15 @@
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData #-}
 
 module TerranixCodegen.ProviderSchema.Provider (
   ProviderSchema (..),
   ProviderSchemas (..),
 ) where
 
-import Autodocodec (Autodocodec (..), HasCodec (..), object, optionalField, (.=))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), withObject, (.:?))
+import Data.Aeson qualified as Aeson
 import Data.Map.Strict (Map)
 import Data.Text qualified as T
+
 import TerranixCodegen.ProviderSchema.Function
 import TerranixCodegen.ProviderSchema.Identity
 import TerranixCodegen.ProviderSchema.Schema
@@ -36,20 +36,33 @@ data ProviderSchema = ProviderSchema
   -- ^ The schemas for any list resources in this provider
   }
   deriving stock (Show, Eq)
-  deriving (FromJSON, ToJSON) via (Autodocodec ProviderSchema)
 
-instance HasCodec ProviderSchema where
-  codec =
-    object "ProviderSchema" $
-      ProviderSchema
-        <$> optionalField "provider" "The schema for the provider's configuration" .= configSchema
-        <*> optionalField "resource_schemas" "The schemas for any resources in this provider" .= resourceSchemas
-        <*> optionalField "data_source_schemas" "The schemas for any data sources in this provider" .= dataSourceSchemas
-        <*> optionalField "ephemeral_resource_schemas" "The schemas for any ephemeral resources in this provider" .= ephemeralResourceSchemas
-        <*> optionalField "action_schemas" "The schemas for any actions in this provider" .= actionSchemas
-        <*> optionalField "functions" "The definitions for any functions in this provider" .= functions
-        <*> optionalField "resource_identity_schemas" "The schemas for resources identities in this provider" .= resourceIdentitySchemas
-        <*> optionalField "list_resource_schemas" "The schemas for any list resources in this provider" .= listResourceSchemas
+instance ToJSON ProviderSchema where
+  toJSON providerSchema =
+    Aeson.object $
+      filter
+        ((/= Aeson.Null) . snd)
+        [ "provider" Aeson..= configSchema providerSchema
+        , "resource_schemas" Aeson..= resourceSchemas providerSchema
+        , "data_source_schemas" Aeson..= dataSourceSchemas providerSchema
+        , "ephemeral_resource_schemas" Aeson..= ephemeralResourceSchemas providerSchema
+        , "action_schemas" Aeson..= actionSchemas providerSchema
+        , "functions" Aeson..= functions providerSchema
+        , "resource_identity_schemas" Aeson..= resourceIdentitySchemas providerSchema
+        , "list_resource_schemas" Aeson..= listResourceSchemas providerSchema
+        ]
+
+instance FromJSON ProviderSchema where
+  parseJSON = withObject "ProviderSchema" $ \o ->
+    ProviderSchema
+      <$> o .:? "provider"
+      <*> o .:? "resource_schemas"
+      <*> o .:? "data_source_schemas"
+      <*> o .:? "ephemeral_resource_schemas"
+      <*> o .:? "action_schemas"
+      <*> o .:? "functions"
+      <*> o .:? "resource_identity_schemas"
+      <*> o .:? "list_resource_schemas"
 
 {- | ProviderSchemas represents the schemas of all providers and resources in use
 by the configuration.
@@ -61,11 +74,18 @@ data ProviderSchemas = ProviderSchemas
   -- ^ The schemas for the providers, indexed by provider type
   }
   deriving stock (Show, Eq)
-  deriving (FromJSON, ToJSON) via (Autodocodec ProviderSchemas)
 
-instance HasCodec ProviderSchemas where
-  codec =
-    object "ProviderSchemas" $
-      ProviderSchemas
-        <$> optionalField "format_version" "The version of the plan format" .= formatVersion
-        <*> optionalField "provider_schemas" "The schemas for the providers, indexed by provider type" .= schemas
+instance ToJSON ProviderSchemas where
+  toJSON providerSchemas =
+    Aeson.object $
+      filter
+        ((/= Aeson.Null) . snd)
+        [ "format_version" Aeson..= formatVersion providerSchemas
+        , "provider_schemas" Aeson..= schemas providerSchemas
+        ]
+
+instance FromJSON ProviderSchemas where
+  parseJSON = withObject "ProviderSchemas" $ \o ->
+    ProviderSchemas
+      <$> o .:? "format_version"
+      <*> o .:? "provider_schemas"

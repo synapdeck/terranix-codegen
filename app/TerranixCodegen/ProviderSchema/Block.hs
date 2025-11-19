@@ -1,13 +1,12 @@
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData #-}
 
 module TerranixCodegen.ProviderSchema.Block (
   SchemaBlock (..),
   SchemaBlockType (..),
 ) where
 
-import Autodocodec (Autodocodec (..), HasCodec (..), object, optionalField, (.=))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), withObject, (.:?))
+import Data.Aeson qualified as Aeson
 import Data.Map.Strict (Map)
 import Data.Text qualified as T
 import Data.Word (Word64)
@@ -28,17 +27,27 @@ data SchemaBlock = SchemaBlock
   -- ^ If true, this block is deprecated
   }
   deriving stock (Show, Eq)
-  deriving (FromJSON, ToJSON) via (Autodocodec SchemaBlock)
 
-instance HasCodec SchemaBlock where
-  codec =
-    object "SchemaBlock" $
-      SchemaBlock
-        <$> optionalField "attributes" "The attributes defined at this level of the block" .= blockAttributes
-        <*> optionalField "block_types" "Any nested blocks within this block" .= blockNestedBlocks
-        <*> optionalField "description" "Description for this block" .= blockDescription
-        <*> optionalField "description_kind" "Format of the description (defaults to plain text)" .= blockDescriptionKind
-        <*> optionalField "deprecated" "If true, this block is deprecated" .= blockDeprecated
+instance ToJSON SchemaBlock where
+  toJSON block =
+    Aeson.object $
+      filter
+        ((/= Aeson.Null) . snd)
+        [ "attributes" Aeson..= blockAttributes block
+        , "block_types" Aeson..= blockNestedBlocks block
+        , "description" Aeson..= blockDescription block
+        , "description_kind" Aeson..= blockDescriptionKind block
+        , "deprecated" Aeson..= blockDeprecated block
+        ]
+
+instance FromJSON SchemaBlock where
+  parseJSON = withObject "SchemaBlock" $ \o ->
+    SchemaBlock
+      <$> o .:? "attributes"
+      <*> o .:? "block_types"
+      <*> o .:? "description"
+      <*> o .:? "description_kind"
+      <*> o .:? "deprecated"
 
 -- | SchemaBlockType describes a nested block within a schema.
 data SchemaBlockType = SchemaBlockType
@@ -52,13 +61,22 @@ data SchemaBlockType = SchemaBlockType
   -- ^ Upper limit on items that can be declared of this block type
   }
   deriving stock (Show, Eq)
-  deriving (FromJSON, ToJSON) via (Autodocodec SchemaBlockType)
 
-instance HasCodec SchemaBlockType where
-  codec =
-    object "SchemaBlockType" $
-      SchemaBlockType
-        <$> optionalField "nesting_mode" "The nesting mode for this block" .= blockTypeNestingMode
-        <*> optionalField "block" "The block data for this block type" .= blockTypeBlock
-        <*> optionalField "min_items" "Lower limit on items that can be declared of this block type" .= blockTypeMinItems
-        <*> optionalField "max_items" "Upper limit on items that can be declared of this block type" .= blockTypeMaxItems
+instance ToJSON SchemaBlockType where
+  toJSON blockType =
+    Aeson.object $
+      filter
+        ((/= Aeson.Null) . snd)
+        [ "nesting_mode" Aeson..= blockTypeNestingMode blockType
+        , "block" Aeson..= blockTypeBlock blockType
+        , "min_items" Aeson..= blockTypeMinItems blockType
+        , "max_items" Aeson..= blockTypeMaxItems blockType
+        ]
+
+instance FromJSON SchemaBlockType where
+  parseJSON = withObject "SchemaBlockType" $ \o ->
+    SchemaBlockType
+      <$> o .:? "nesting_mode"
+      <*> o .:? "block"
+      <*> o .:? "min_items"
+      <*> o .:? "max_items"

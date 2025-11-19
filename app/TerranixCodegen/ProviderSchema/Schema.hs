@@ -1,13 +1,12 @@
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData #-}
 
 module TerranixCodegen.ProviderSchema.Schema (
   Schema (..),
   ActionSchema (..),
 ) where
 
-import Autodocodec (Autodocodec (..), HasCodec (..), object, optionalField, requiredField, (.=))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), withObject, (.:), (.:?))
+import Data.Aeson qualified as Aeson
 import Data.Word (Word64)
 import TerranixCodegen.ProviderSchema.Block
 
@@ -21,14 +20,21 @@ data Schema = Schema
   -- ^ The root-level block of configuration values
   }
   deriving stock (Show, Eq)
-  deriving (FromJSON, ToJSON) via (Autodocodec Schema)
 
-instance HasCodec Schema where
-  codec =
-    object "Schema" $
-      Schema
-        <$> requiredField "version" "The version of the particular resource schema" .= schemaVersion
-        <*> optionalField "block" "The root-level block of configuration values" .= schemaBlock
+instance ToJSON Schema where
+  toJSON schema =
+    Aeson.object $
+      filter
+        ((/= Aeson.Null) . snd)
+        [ "version" Aeson..= schemaVersion schema
+        , "block" Aeson..= schemaBlock schema
+        ]
+
+instance FromJSON Schema where
+  parseJSON = withObject "Schema" $ \o ->
+    Schema
+      <$> o .: "version"
+      <*> o .:? "block"
 
 -- | ActionSchema is the JSON representation of an action schema.
 newtype ActionSchema = ActionSchema
@@ -36,10 +42,15 @@ newtype ActionSchema = ActionSchema
   -- ^ The root-level block of configuration values
   }
   deriving stock (Show, Eq)
-  deriving (FromJSON, ToJSON) via (Autodocodec ActionSchema)
 
-instance HasCodec ActionSchema where
-  codec =
-    object "ActionSchema" $
-      ActionSchema
-        <$> optionalField "block" "The root-level block of configuration values" .= actionSchemaBlock
+instance ToJSON ActionSchema where
+  toJSON actionSchema =
+    Aeson.object $
+      filter
+        ((/= Aeson.Null) . snd)
+        ["block" Aeson..= actionSchemaBlock actionSchema]
+
+instance FromJSON ActionSchema where
+  parseJSON = withObject "ActionSchema" $ \o ->
+    ActionSchema
+      <$> o .:? "block"

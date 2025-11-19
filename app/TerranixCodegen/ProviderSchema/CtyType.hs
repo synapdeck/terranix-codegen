@@ -1,5 +1,4 @@
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData #-}
 
 module TerranixCodegen.ProviderSchema.CtyType (
   CtyType (..),
@@ -9,10 +8,11 @@ module TerranixCodegen.ProviderSchema.CtyType (
   isStructural,
 ) where
 
-import Autodocodec (Autodocodec (..), HasCodec (..), bimapCodec, codec)
-import Data.Aeson (FromJSON, ToJSON, Value (..))
+import Control.Applicative ((<|>))
+import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), withArray, withText)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KM
+import Data.Aeson.Types (Parser)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
@@ -40,101 +40,77 @@ data CtyType
   | -- | Tuple with element types
     CtyTuple [CtyType]
   deriving stock (Eq, Ord)
-  deriving (FromJSON, ToJSON) via (Autodocodec CtyType)
 
 instance Show CtyType where
   show = T.unpack . friendlyName
 
-instance HasCodec CtyType where
-  codec = bimapCodec decode encode codec
-    where
-      decode :: Value -> Either String CtyType
-      decode (String "bool") = Right CtyBool
-      decode (String "number") = Right CtyNumber
-      decode (String "string") = Right CtyString
-      decode (String "dynamic") = Right CtyDynamic
-      decode (Array arr) = case V.toList arr of
-        [String "list", elemTypeVal] ->
-          case decode elemTypeVal of
-            Left err -> Left err
-            Right t -> Right (CtyList t)
-        [String "set", elemTypeVal] ->
-          case decode elemTypeVal of
-            Left err -> Left err
-            Right t -> Right (CtySet t)
-        [String "map", elemTypeVal] ->
-          case decode elemTypeVal of
-            Left err -> Left err
-            Right t -> Right (CtyMap t)
-        [String "object", Object attrs] ->
-          case parseAttrs attrs of
-            Left err -> Left err
-            Right attrMap -> Right (CtyObject attrMap Set.empty)
-        [String "object", Object attrs, Array optArr] ->
-          case (parseAttrs attrs, parseOptionals optArr) of
-            (Right attrMap, Right opts) -> Right (CtyObject attrMap opts)
-            (Left err, _) -> Left err
-            (_, Left err) -> Left err
-        [String "tuple", Array elemTypesArr] ->
-          case mapM decode (V.toList elemTypesArr) of
-            Left err -> Left err
-            Right types -> Right (CtyTuple types)
-        _ -> Left "Invalid cty type array format"
-      decode _ = Left "Expected string or array for cty type"
-
-      encode :: CtyType -> Value
-      encode CtyBool = String "bool"
-      encode CtyNumber = String "number"
-      encode CtyString = String "string"
-      encode CtyDynamic = String "dynamic"
-      encode (CtyList elemType) = Array $ V.fromList [String "list", encode elemType]
-      encode (CtySet elemType) = Array $ V.fromList [String "set", encode elemType]
-      encode (CtyMap elemType) = Array $ V.fromList [String "map", encode elemType]
-      encode (CtyObject attrTypes optionals)
-        | Set.null optionals =
-            Array $
-              V.fromList
-                [ String "object"
-                , Object $ KM.fromMap $ Map.mapKeys Key.fromText $ Map.map encode attrTypes
-                ]
-        | otherwise =
-            Array $
-              V.fromList
-                [ String "object"
-                , Object $ KM.fromMap $ Map.mapKeys Key.fromText $ Map.map encode attrTypes
-                , Array $ V.fromList $ map String $ Set.toList optionals
-                ]
-      encode (CtyTuple elemTypes) =
+instance ToJSON CtyType where
+  toJSON CtyBool = String "bool"
+  toJSON CtyNumber = String "number"
+  toJSON CtyString = String "string"
+  toJSON CtyDynamic = String "dynamic"
+  toJSON (CtyList elemType) = Array $ V.fromList [String "list", toJSON elemType]
+  toJSON (CtySet elemType) = Array $ V.fromList [String "set", toJSON elemType]
+  toJSON (CtyMap elemType) = Array $ V.fromList [String "map", toJSON elemType]
+  toJSON (CtyObject attrTypes optionals)
+    | Set.null optionals =
         Array $
           V.fromList
-            [ String "tuple"
-            , Array $ V.fromList $ map encode elemTypes
+            [ String "object"
+            , Object $ KM.fromMap $ Map.mapKeys Key.fromText $ Map.map toJSON attrTypes
             ]
+    | otherwise =
+        Array $
+          V.fromList
+            [ String "object"
+            , Object $ KM.fromMap $ Map.mapKeys Key.fromText $ Map.map toJSON attrTypes
+            , Array $ V.fromList $ map String $ Set.toList optionals
+            ]
+  toJSON (CtyTuple elemTypes) =
+    Array $
+      V.fromList
+        [ String "tuple"
+        , Array $ V.fromList $ map toJSON elemTypes
+        ]
 
-      -- Helper to parse attribute map
-      parseAttrs :: KM.KeyMap Value -> Either String (Map Text CtyType)
+instance FromJSON CtyType where
+  parseJSON v = parsePrimitive v <|> parseCompound v
+    where
+      parsePrimitive = withText "CtyType" $ \case
+        "bool" -> pure CtyBool
+        "number" -> pure CtyNumber
+        "string" -> pure CtyString
+        "dynamic" -> pure CtyDynamic
+        other -> fail $ "Unknown primitive type: " <> show other
+
+      parseCompound = withArray "CtyType" $ \arr -> do
+        case V.toList arr of
+          [] -> fail "Empty array in CtyType"
+          (String tag : rest) -> case (tag, rest) of
+            ("list", [elemType]) -> CtyList <$> parseJSON elemType
+            ("set", [elemType]) -> CtySet <$> parseJSON elemType
+            ("map", [elemType]) -> CtyMap <$> parseJSON elemType
+            ("object", [Object attrs]) -> do
+              attrMap <- parseAttrs attrs
+              pure $ CtyObject attrMap Set.empty
+            ("object", [Object attrs, Array optionals]) -> do
+              attrMap <- parseAttrs attrs
+              optList <- mapM parseOptional (V.toList optionals)
+              pure $ CtyObject attrMap (Set.fromList optList)
+            ("tuple", [Array elemTypes]) -> do
+              types <- mapM parseJSON (V.toList elemTypes)
+              pure $ CtyTuple types
+            _ -> fail $ "Invalid CtyType structure: " <> show (tag, rest)
+          _ -> fail "CtyType array must start with a string tag"
+
+      parseAttrs :: KM.KeyMap Value -> Parser (Map Text CtyType)
       parseAttrs km = do
-        let attrList = KM.toList km
-        typedPairs <-
-          mapM
-            ( \(k, v) -> case decode v of
-                Left err -> Left err
-                Right t -> Right (Key.toText k, t)
-            )
-            attrList
-        Right $ Map.fromList typedPairs
+        let pairs = KM.toList km
+        parsedPairs <- mapM (\(k, val) -> (,) (Key.toText k) <$> parseJSON val) pairs
+        pure $ Map.fromList parsedPairs
 
-      -- Helper to parse optional attribute names
-      parseOptionals :: V.Vector Value -> Either String (Set.Set Text)
-      parseOptionals arr = do
-        names <-
-          mapM
-            ( \case
-                String s -> Right s
-                _ -> Left "Expected string in optionals array"
-            )
-            (V.toList arr)
-        Right $ Set.fromList names
+      parseOptional :: Value -> Parser Text
+      parseOptional = withText "optional key" pure
 
 -- | Get a human-friendly name for a CtyType
 friendlyName :: CtyType -> Text
