@@ -17,10 +17,21 @@ extra-doc-files: CHANGELOG.md
 common warnings
   ghc-options: -Wall
 
-executable terranix-codegen
+library
   -- cabal-gild: discover
   import: warnings
-  main-is: Main.hs
+  exposed-modules:
+    TerranixCodegen.PrettyPrint
+    TerranixCodegen.ProviderSchema
+    TerranixCodegen.ProviderSchema.Attribute
+    TerranixCodegen.ProviderSchema.Block
+    TerranixCodegen.ProviderSchema.CtyType
+    TerranixCodegen.ProviderSchema.Function
+    TerranixCodegen.ProviderSchema.Identity
+    TerranixCodegen.ProviderSchema.Provider
+    TerranixCodegen.ProviderSchema.Schema
+    TerranixCodegen.ProviderSchema.Types
+
   build-depends:
     aeson ^>=2.2.3.0,
     base ^>=4.20.2.0,
@@ -35,17 +46,19 @@ executable terranix-codegen
   default-extensions:
     OverloadedStrings
 
-  other-modules:
-    TerranixCodegen.Main
-    TerranixCodegen.ProviderSchema
-    TerranixCodegen.ProviderSchema.Attribute
-    TerranixCodegen.ProviderSchema.Block
-    TerranixCodegen.ProviderSchema.CtyType
-    TerranixCodegen.ProviderSchema.Function
-    TerranixCodegen.ProviderSchema.Identity
-    TerranixCodegen.ProviderSchema.Provider
-    TerranixCodegen.ProviderSchema.Schema
-    TerranixCodegen.ProviderSchema.Types
+  hs-source-dirs: lib
+  default-language: GHC2024
+
+executable terranix-codegen
+  -- cabal-gild: discover
+  import: warnings
+  main-is: Main.hs
+  build-depends:
+    base ^>=4.20.2.0,
+    terranix-codegen,
+
+  default-extensions:
+    OverloadedStrings
 
   hs-source-dirs: app
   default-language: GHC2024
@@ -55,31 +68,13 @@ executable schema-printer
   import: warnings
   main-is: SchemaPrinter.hs
   build-depends:
-    aeson ^>=2.2,
-    autodocodec ^>=0.5,
     base ^>=4.20,
     bytestring ^>=0.12,
-    containers ^>=0.7,
-    hnix ^>=0.17,
-    prettyprinter ^>=1.7,
     prettyprinter-ansi-terminal ^>=1.1,
-    text ^>=2.1,
-    vector ^>=0.13,
+    terranix-codegen,
 
   default-extensions:
     OverloadedStrings
-
-  other-modules:
-    TerranixCodegen.PrettyPrint
-    TerranixCodegen.ProviderSchema
-    TerranixCodegen.ProviderSchema.Attribute
-    TerranixCodegen.ProviderSchema.Block
-    TerranixCodegen.ProviderSchema.CtyType
-    TerranixCodegen.ProviderSchema.Function
-    TerranixCodegen.ProviderSchema.Identity
-    TerranixCodegen.ProviderSchema.Provider
-    TerranixCodegen.ProviderSchema.Schema
-    TerranixCodegen.ProviderSchema.Types
 
   hs-source-dirs: app
   default-language: GHC2024

@@ -1,3 +1,4 @@
 module Main (main) where
 
-import TerranixCodegen.Main (main)
+main :: IO ()
+main = putStrLn "Hello, World!"
