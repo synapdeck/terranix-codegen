@@ -45,11 +45,10 @@ mapCtyTypeToNix = \case
   -- Structural types
   CtyObject attrTypes optionals ->
     mapObjectToSubmodule attrTypes optionals
-  CtyTuple _elemTypes ->
-    -- For tuples, we use listOf anything with a note that it's a fixed-length tuple
-    -- A more sophisticated approach would validate length, but that requires custom validators
-    -- TODO: Consider adding length validation or using a more specific type
-    nixTypes "listOf" `mkApp` nixTypes "anything"
+  CtyTuple elemTypes ->
+    -- Map to types.tupleOf with proper element types
+    -- This generates: types.tupleOf [types.str, types.number, ...]
+    nixTypes "tupleOf" `mkApp` mkTypeList elemTypes
 
 {- | Map a CtyType to a Nix type expression, optionally wrapping in types.nullOr.
 
@@ -70,6 +69,13 @@ nixTypes name = mkSym "types" `mkSelect` name
 -- | Helper to build a select expression (attribute access)
 mkSelect :: NExpr -> Text -> NExpr
 mkSelect expr attr = Fix $ NSelect Nothing expr (mkSelector attr)
+
+{- | Helper to build a Nix list of type expressions
+Maps each CtyType to its Nix type and wraps in a list
+Example: [CtyString, CtyNumber] -> [types.str, types.number]
+-}
+mkTypeList :: [CtyType] -> NExpr
+mkTypeList elemTypes = Fix $ NList (map mapCtyTypeToNix elemTypes)
 
 {- | Map a Terraform object type to a Nix submodule.
 

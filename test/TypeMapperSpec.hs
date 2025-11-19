@@ -111,10 +111,54 @@ spec = do
           |]
 
     describe "tuple types" $ do
-      it "maps tuples to types.listOf types.anything" $ do
+      it "maps simple tuple to types.tupleOf with element types" $ do
         let tupleType = CtyTuple [CtyString, CtyNumber, CtyBool]
         mapCtyTypeToNix tupleType
-          `shouldMapTo` [nix| types.listOf types.anything |]
+          `shouldMapTo` [nix| types.tupleOf [types.str types.number types.bool] |]
+
+      it "maps empty tuple" $ do
+        let tupleType = CtyTuple []
+        mapCtyTypeToNix tupleType
+          `shouldMapTo` [nix| types.tupleOf [] |]
+
+      it "maps single-element tuple" $ do
+        let tupleType = CtyTuple [CtyString]
+        mapCtyTypeToNix tupleType
+          `shouldMapTo` [nix| types.tupleOf [types.str] |]
+
+      it "maps tuple with nested collection types" $ do
+        let tupleType = CtyTuple [CtyList CtyString, CtyMap CtyNumber]
+        mapCtyTypeToNix tupleType
+          `shouldMapTo` [nix| types.tupleOf [(types.listOf types.str) (types.attrsOf types.number)] |]
+
+      it "maps tuple containing object type" $ do
+        let objType =
+              CtyObject
+                (Map.fromList [("name", CtyString)])
+                Set.empty
+            tupleType = CtyTuple [CtyString, objType]
+        mapCtyTypeToNix tupleType
+          `shouldMapTo` [nix|
+            types.tupleOf [
+              types.str
+              (types.submodule {
+                options = {
+                  name = mkOption { type = types.str; };
+                };
+              })
+            ]
+          |]
+
+      it "maps nested tuples" $ do
+        let innerTuple = CtyTuple [CtyString, CtyNumber]
+            outerTuple = CtyTuple [innerTuple, CtyBool]
+        mapCtyTypeToNix outerTuple
+          `shouldMapTo` [nix|
+            types.tupleOf [
+              (types.tupleOf [types.str types.number])
+              types.bool
+            ]
+          |]
 
   describe "mapCtyTypeToNixWithOptional" $ do
     it "wraps required types without modification" $ do
@@ -183,6 +227,55 @@ spec = do
                     to_port = mkOption { type = types.number; };
                   };
                 });
+              };
+              name = mkOption { type = types.str; };
+            };
+          }
+        |]
+
+  describe "integration tests with tuple types" $ do
+    it "handles realistic scenario with tuples in configuration" $ do
+      -- Simulates a Terraform resource that has a tuple attribute
+      -- For example, a resource with connection_info = tuple([string, number, bool])
+      -- representing [host, port, use_ssl]
+      let connectionInfoType = CtyTuple [CtyString, CtyNumber, CtyBool]
+          resourceType =
+            CtyObject
+              ( Map.fromList
+                  [ ("name", CtyString)
+                  , ("connection_info", connectionInfoType)
+                  , ("enabled", CtyBool)
+                  ]
+              )
+              (Set.fromList ["enabled"])
+      mapCtyTypeToNix resourceType
+        `shouldMapTo` [nix|
+          types.submodule {
+            options = {
+              connection_info = mkOption {
+                type = types.tupleOf [types.str types.number types.bool];
+              };
+              enabled = mkOption { type = types.nullOr types.bool; };
+              name = mkOption { type = types.str; };
+            };
+          }
+        |]
+
+    it "handles complex scenario with list of tuples" $ do
+      -- A resource that has a list of coordinate pairs (tuples of numbers)
+      -- coordinates = list(tuple([number, number]))
+      let coordinateTuple = CtyTuple [CtyNumber, CtyNumber]
+          coordinatesList = CtyList coordinateTuple
+          resourceType =
+            CtyObject
+              (Map.fromList [("name", CtyString), ("coordinates", coordinatesList)])
+              Set.empty
+      mapCtyTypeToNix resourceType
+        `shouldMapTo` [nix|
+          types.submodule {
+            options = {
+              coordinates = mkOption {
+                type = types.listOf (types.tupleOf [types.number types.number]);
               };
               name = mkOption { type = types.str; };
             };

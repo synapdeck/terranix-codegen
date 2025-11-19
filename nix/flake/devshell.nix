@@ -12,6 +12,7 @@
 
       packages = with pkgs; [
         mdbook
+        nix-unit
         prek
       ];
     };
