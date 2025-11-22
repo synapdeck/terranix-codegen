@@ -65,12 +65,19 @@ executable terranix-codegen
   -- cabal-gild: discover
   import: warnings
   main-is: Main.hs
+  other-modules:
+    CLI.Commands
+    CLI.Parser
+    CLI.Types
+    Paths_terranix_codegen
+
   build-depends:
     aeson ^>=2.2.3.0,
     aeson-pretty ^>=0.8,
     base ^>=4.20.2.0,
     bytestring ^>=0.12,
     optparse-applicative ^>=0.18,
+    prettyprinter ^>=1.7.1,
     prettyprinter-ansi-terminal ^>=1.1,
     terranix-codegen,
     text ^>=2.1.3,
