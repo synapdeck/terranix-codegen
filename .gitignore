@@ -11,5 +11,5 @@ result-*
 # direnv
 .direnv
 
-# git-hooks.nix
-.pre-commit-config.yaml
+# treefmt-nix
+.treefmt.toml

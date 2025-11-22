@@ -1,19 +1,45 @@
-{
+{inputs, ...}: {
+  imports = [
+    inputs.devshell.flakeModule
+  ];
+
   perSystem = {
-    pkgs,
     config,
+    pkgs,
+    lib,
     ...
   }: {
-    devShells.default = pkgs.mkShell {
-      inputsFrom = [
-        config.haskellProjects.default.outputs.devShell
-        config.pre-commit.devShell
+    devshells.default = {
+      packages = with pkgs; [
+        alejandra
+        deadnix
+        mdformat
+        pkl
+        statix
       ];
 
-      packages = with pkgs; [
-        mdbook
-        nix-unit
-        prek
+      packagesFrom = [
+        config.haskellProjects.default.outputs.devShell
+      ];
+
+      devshell.startup.hk = {
+        text = ''
+          # Ensure git hooks are installed (skip in worktrees)
+          if [ -d .git ]; then
+            if ! output=$(hk install 2>&1); then
+              exit_code=$?
+              echo "$output" >&2
+              exit $exit_code
+            fi
+          fi
+        '';
+      };
+
+      env = [
+        {
+          name = "FLAKE_ROOT";
+          value = "\${${lib.getExe config.flake-root.package}}";
+        }
       ];
     };
   };

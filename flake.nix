@@ -1,28 +1,37 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
       inputs.nixpkgs-lib.follows = "nixpkgs";
     };
 
-    actions-nix = {
-      url = "github:nialov/actions.nix";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        flake-parts.follows = "flake-parts";
-        git-hooks.follows = "git-hooks";
-      };
+    flake-root.url = "github:srid/flake-root";
+
+    files.url = "github:mightyiam/files";
+
+    devshell = {
+      url = "github:numtide/devshell";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     fourmolu-nix.url = "github:jedimahdi/fourmolu-nix";
 
-    git-hooks = {
-      url = "github:cachix/git-hooks.nix";
-      inputs.nixpkgs.follows = "nixpkgs";
+    github-actions-nix = {
+      url = "github:synapdeck/github-actions-nix";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-parts.follows = "flake-parts";
+      };
     };
 
     haskell-flake.url = "github:srid/haskell-flake";
+
+    hk = {
+      url = "git+https://github.com/jdx/hk?submodules=1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     nix-unit = {
       url = "github:nix-community/nix-unit";

@@ -17,6 +17,12 @@
       '';
     };
 
+    devshells.default = {
+      packages = with pkgs; [
+        mdbook
+      ];
+    };
+
     apps.serve-docs = {
       type = "app";
       program = "${pkgs.writeShellScript "serve-docs" ''

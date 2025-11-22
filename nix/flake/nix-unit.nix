@@ -17,6 +17,10 @@ in {
   ];
 
   perSystem = {
+    pkgs,
+    system,
+    ...
+  }: {
     nix-unit.inputs = let
       sanitizeInput = input:
         if builtins.isAttrs input && input ? outPath
@@ -24,6 +28,20 @@ in {
         else input;
     in
       builtins.mapAttrs (_: sanitizeInput) (builtins.removeAttrs inputs ["self"]);
+
+    devshells.default = {
+      commands = [
+        {
+          name = "nix-test";
+          help = "Run `nix-unit` tests";
+          command = "nix-unit --flake .#tests.systems.${system}";
+        }
+      ];
+
+      packages = with pkgs; [
+        nix-unit
+      ];
+    };
   };
 
   # System-agnostic tests at the flake level

@@ -1,0 +1,91 @@
+amends "package://github.com/jdx/hk/releases/download/v1.18.3/hk@1.18.3#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.18.3/hk@1.18.3#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+    // Haskell:
+    ["cabal-gild"] = new Step {
+      glob = List("**/*.cabal")
+      check = "cabal-gild -m check --input={{files}}"
+      fix = "cabal-gild -m format --io={{files}}"
+    }
+
+    ["fourmolu"] = new Step {
+      glob = List("**/*.hs")
+      check = "fourmolu --mode check {{files}}"
+      fix = "fourmolu --mode inplace {{files}}"
+    }
+
+    ["hlint"] = new Step {
+      glob = List("**/*.hs")
+      check = "hlint -XQuasiQuotes {{files}}"
+      fix = "hlint -XQuasiQuotes --refactor {{files}}"
+    }
+
+    // Markdown:
+    ["mdformat"] = new Step {
+      glob = List("**/*.md")
+      check = "mdformat --check {{files}}"
+      fix = "mdformat {{files}}"
+    }
+
+    // Nix:
+    ["alejandra"] = (Builtins.alejandra) {
+      check = "alejandra --check --quiet {{files}}"
+      fix = "alejandra --quiet {{files}}"
+    }
+
+    ["deadnix"] = new Step {
+      glob = List("**/*.nix")
+      check = "deadnix --fail --no-lambda-pattern-names {{files}}"
+      fix = "deadnix --no-lambda-pattern-names --edit {{files}}"
+      batch = true
+    }
+
+    ["statix"] = new Step {
+      glob = List("**/*.nix")
+      workspace_indicator = "flake.nix"
+      check = "statix check {{workspace}}"
+      fix = "statix fix {{workspace}}"
+      batch = true
+    }
+
+    ["write-files"] = new Step {
+      fix = "nix run .#write-files"
+    }
+
+    // Configuration files:
+    ["pkl"] = Builtins.pkl
+
+    // Builtins:
+    ["check_merge_conflict"] = Builtins.check_merge_conflict
+    ["check_symlinks"] = Builtins.check_symlinks
+    ["mixed_line_ending"] = Builtins.mixed_line_ending
+
+    ["newlines"] = (Builtins.newlines) {
+      depends = List("write-files")
+    }
+
+    ["trailing_whitespace"] = (Builtins.trailing_whitespace) {
+      depends = List("write-files")
+    }
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps = linters
+    }
+
+    ["pre-push"] {
+        steps = linters
+    }
+
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+}

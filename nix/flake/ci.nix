@@ -1,25 +1,51 @@
 {inputs, ...}: {
   imports = [
-    inputs.actions-nix.flakeModules.default
+    inputs.files.flakeModules.default
+    inputs.github-actions-nix.flakeModules.default
   ];
 
-  flake = {
-    actions-nix = {
-      pre-commit.enable = true;
-      defaultValues.jobs.runs-on = "ubuntu-latest";
+  perSystem = {
+    config,
+    lib,
+    ...
+  }: {
+    files.files = let
+      go = name: drv: {
+        path_ = ".github/workflows/${name}";
+        inherit drv;
+      };
+    in
+      lib.mapAttrsToList go config.githubActions.workflowFiles;
+
+    apps.write-files = {
+      type = "app";
+      program = config.files.writer.drv;
+    };
+
+    githubActions = {
+      enable = true;
 
       workflows = {
-        ".github/workflows/check.yaml" = {
+        check = {
+          name = "Check";
+
           on = {
             push = {};
-            pull_request = {};
+            pullRequest = {};
           };
+
           permissions = {
             contents = "read";
             id-token = "write";
           };
+
+          defaults.job = {
+            runsOn = "ubuntu-latest";
+          };
+
           jobs = {
             check = {
+              name = "Run flake check";
               steps = [
                 {
                   name = "Checkout";
@@ -35,7 +61,9 @@
                 }
               ];
             };
+
             build = {
+              name = "Build package";
               steps = [
                 {
                   name = "Checkout";
@@ -53,20 +81,28 @@
             };
           };
         };
-        ".github/workflows/pages.yaml" = {
+
+        pages = {
+          name = "GitHub Pages";
+
           on = {
-            push = {
-              branches = ["master"];
-            };
-            workflow_dispatch = {};
+            push.branches = ["master"];
+            workflowDispatch = {};
           };
+
           permissions = {
             contents = "read";
             pages = "write";
             id-token = "write";
           };
+
+          defaults.job = {
+            runsOn = "ubuntu-latest";
+          };
+
           jobs = {
             build = {
+              name = "Build documentation";
               steps = [
                 {
                   name = "Checkout";
@@ -87,22 +123,27 @@
                 {
                   name = "Upload artifact";
                   uses = "actions/upload-pages-artifact@v3";
-                  "with" = {
+                  with_ = {
                     path = "./result";
                   };
                 }
               ];
             };
+
             deploy = {
+              name = "Deploy to GitHub Pages";
               needs = ["build"];
+
               permissions = {
                 pages = "write";
                 id-token = "write";
               };
+
               environment = {
                 name = "github-pages";
                 url = "\${{ steps.deployment.outputs.page_url }}";
               };
+
               steps = [
                 {
                   name = "Deploy to GitHub Pages";
