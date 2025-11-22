@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 -- | Generate minimal Terraform configurations and extract provider schemas
 module TerranixCodegen.TerraformGenerator (
   extractSchemaFromProviders,
@@ -7,12 +5,17 @@ module TerranixCodegen.TerraformGenerator (
 )
 where
 
-import Control.Exception (Exception, bracket, throwIO)
+import Control.Exception (bracket)
+import Control.Monad.Except (MonadError (throwError), runExceptT)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString.Lazy qualified as BL
+import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
+import Prettyprinter (Doc, Pretty (pretty), defaultLayoutOptions, indent, layoutPretty, vsep, (<+>))
+import Prettyprinter.Render.Text (renderStrict)
 import System.Directory (removeDirectoryRecursive)
 import System.Exit (ExitCode (..))
 import System.FilePath ((</>))
@@ -29,8 +32,6 @@ data TerraformError
   | SchemaParsingFailed String
   deriving (Show, Eq)
 
-instance Exception TerraformError
-
 {- | Extract provider schemas from a list of provider specifications
 
 This function:
@@ -42,82 +43,92 @@ This function:
   5. Parses the JSON output
   6. Cleans up the temporary directory
 
-May throw 'TerraformError' if any step fails.
+Returns 'Left TerraformError' if any step fails.
 -}
-extractSchemaFromProviders :: [ProviderSpec] -> IO ProviderSchemas
+extractSchemaFromProviders :: (MonadIO m, MonadError TerraformError m) => [ProviderSpec] -> m ProviderSchemas
 extractSchemaFromProviders specs = do
   -- Create temp directory and ensure cleanup
-  tmpDir <- getCanonicalTemporaryDirectory
-  bracket
-    (createTempDirectory tmpDir "terranix-codegen-")
-    removeDirectoryRecursive
-    $ \workDir -> do
-      -- Generate Terraform configuration
-      let tfContent = generateTerraformConfig specs
-      let tfFile = workDir </> "main.tf"
-      TIO.writeFile tfFile tfContent
+  tmpDir <- liftIO getCanonicalTemporaryDirectory
+  result <- liftIO $ do
+    bracket
+      (createTempDirectory tmpDir "terranix-codegen-")
+      removeDirectoryRecursive
+      $ \workDir -> runExceptT $ do
+        -- Generate Terraform configuration
+        let tfContent = generateTerraformConfig specs
+        let tfFile = workDir </> "main.tf"
+        liftIO $ TIO.writeFile tfFile tfContent
 
-      -- Check if terraform is available
-      checkTerraformInstalled
+        -- Check if terraform is available
+        checkTerraformInstalled
 
-      -- Run terraform init
-      runTerraformInit workDir
+        -- Run terraform init
+        runTerraformInit workDir
 
-      -- Extract schema
-      schemaJson <- runTerraformSchemaExtract workDir
+        -- Extract schema
+        schemaJson <- runTerraformSchemaExtract workDir
 
-      -- Parse schema
-      case parseProviderSchemas schemaJson of
-        Left err -> throwIO $ SchemaParsingFailed err
-        Right schemas -> pure schemas
+        -- Parse schema
+        case parseProviderSchemas schemaJson of
+          Left err -> throwError $ SchemaParsingFailed err
+          Right schemas -> pure schemas
+
+  -- Unwrap the result from the bracket
+  case result of
+    Left err -> throwError err
+    Right schemas -> pure schemas
 
 -- | Generate minimal Terraform configuration from provider specs
 generateTerraformConfig :: [ProviderSpec] -> Text
-generateTerraformConfig specs =
-  T.unlines
-    [ "terraform {"
-    , "  required_providers {"
-    , T.unlines (map providerBlock specs)
-    , "  }"
-    , "}"
-    ]
+generateTerraformConfig specs = renderStrict $ layoutPretty defaultLayoutOptions terraformDoc
   where
-    providerBlock :: ProviderSpec -> Text
+    terraformDoc :: Doc ann
+    terraformDoc =
+      vsep
+        [ "terraform" <+> "{"
+        , indent 2 $
+            vsep
+              [ "required_providers" <+> "{"
+              , indent 2 $ vsep $ map providerBlock specs
+              , "}"
+              ]
+        , "}"
+        ]
+
+    providerBlock :: ProviderSpec -> Doc ann
     providerBlock spec =
-      let sourceLine = "      source  = \"" <> providerNamespace spec <> "/" <> providerName spec <> "\""
-          versionLine = case providerVersion spec of
-            Nothing -> ""
-            Just v -> "\n      version = \"" <> v <> "\""
-       in T.unlines
-            [ "    " <> providerName spec <> " = {"
-            , sourceLine <> versionLine
-            , "    }"
-            ]
+      vsep $
+        catMaybes
+          [ Just $ pretty (providerName spec) <+> "= {"
+          , Just $ indent 2 $ "source" <+> "=" <+> pretty (show $ providerNamespace spec <> "/" <> providerName spec)
+          , fmap (\v -> indent 2 $ "version" <+> "=" <+> pretty (show v)) (providerVersion spec)
+          , Just "}"
+          ]
 
 -- | Check if terraform is installed and available
-checkTerraformInstalled :: IO ()
+checkTerraformInstalled :: (MonadIO m, MonadError TerraformError m) => m ()
 checkTerraformInstalled = do
-  (exitCode, _, _) <- readProcessWithExitCode "terraform" ["version"] ""
+  (exitCode, _, _) <- liftIO $ readProcessWithExitCode "terraform" ["version"] ""
   case exitCode of
     ExitSuccess -> pure ()
-    ExitFailure _ -> throwIO TerraformNotFound
+    ExitFailure _ -> throwError TerraformNotFound
 
 -- | Run terraform init in the working directory
-runTerraformInit :: FilePath -> IO ()
+runTerraformInit :: (MonadIO m, MonadError TerraformError m) => FilePath -> m ()
 runTerraformInit workDir = do
   (exitCode, stdout, stderr) <-
-    readProcessWithExitCode "terraform" ["-chdir=" <> workDir, "init", "-no-color"] ""
+    liftIO $ readProcessWithExitCode "terraform" ["-chdir=" <> workDir, "init", "-no-color"] ""
   case exitCode of
     ExitSuccess -> pure ()
     ExitFailure _ ->
-      throwIO $ TerraformInitFailed (stdout <> "\n" <> stderr)
+      throwError $ TerraformInitFailed (stdout <> "\n" <> stderr)
 
 -- | Run terraform providers schema -json and return the output
-runTerraformSchemaExtract :: FilePath -> IO BL.ByteString
+runTerraformSchemaExtract :: (MonadIO m, MonadError TerraformError m) => FilePath -> m BL.ByteString
 runTerraformSchemaExtract workDir = do
   (exitCode, stdout, stderr) <-
-    readProcessWithExitCode "terraform" ["-chdir=" <> workDir, "providers", "schema", "-json"] ""
+    liftIO $ readProcessWithExitCode "terraform" ["-chdir=" <> workDir, "providers", "schema", "-json"] ""
   case exitCode of
     ExitSuccess -> pure $ BL.fromStrict $ TE.encodeUtf8 $ T.pack stdout
     ExitFailure _ ->
-      throwIO $ SchemaExtractionFailed (stdout <> "\n" <> stderr)
+      throwError $ SchemaExtractionFailed (stdout <> "\n" <> stderr)

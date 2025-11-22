@@ -4,19 +4,21 @@ module CLI.Commands (
 where
 
 import CLI.Types
+import Control.Monad.Except (runExceptT)
 import Data.Aeson (encode)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.ByteString.Lazy qualified as BL
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Prettyprinter.Render.Terminal (putDoc)
+import Prettyprinter (Doc, annotate, hardline, pipe, pretty, vcat, vsep, (<+>))
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (..), bold, color, hPutDoc, putDoc)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
 import TerranixCodegen.FileOrganizer
 import TerranixCodegen.PrettyPrint
 import TerranixCodegen.ProviderSchema
 import TerranixCodegen.ProviderSpec
-import TerranixCodegen.TerraformGenerator
+import TerranixCodegen.TerraformGenerator (TerraformError (..), extractSchemaFromProviders)
 
 -- | Execute a command
 runCommand :: Command -> IO ()
@@ -58,7 +60,13 @@ loadFromFile maybePath = do
   hPutStrLn stderr "Parsing provider schema..."
   case parseProviderSchemas content of
     Left err -> do
-      hPutStrLn stderr $ "Error parsing schema: " <> err
+      hPutDoc stderr $
+        vsep
+          [ annotate (color Red <> bold) "Error:" <+> "Failed to parse schema"
+          , hardline
+          , pretty err
+          , mempty
+          ]
       exitFailure
     Right schemas -> do
       hPutStrLn stderr "Schema parsed successfully"
@@ -70,19 +78,82 @@ loadFromProviderSpecs specTexts = do
   -- Parse provider specifications
   specs <- case mapM parseProviderSpecText specTexts of
     Left err -> do
-      hPutStrLn stderr $ "Error parsing provider specification: " <> err
+      hPutDoc stderr $
+        vsep
+          [ annotate (color Red <> bold) "Error:" <+> "Failed to parse provider specification"
+          , hardline
+          , pretty err
+          , mempty
+          ]
       exitFailure
     Right parsed -> pure parsed
 
-  hPutStrLn stderr $ "Generating Terraform for " <> show (length specs) <> " provider(s)..."
-  mapM_ (hPutStrLn stderr . ("  - " <>) . T.unpack . formatProviderSpec) specs
+  -- Display provider specs being processed
+  hPutDoc stderr $
+    vsep
+      [ "Generating Terraform for" <+> pretty (length specs) <+> "provider(s)..."
+      , vcat $ map (\spec -> "  -" <+> pretty (formatProviderSpec spec)) specs
+      , mempty
+      ]
 
   -- Extract schemas using Terraform
-  extractSchemaFromProviders specs
+  result <- runExceptT $ extractSchemaFromProviders specs
+  case result of
+    Left err -> do
+      hPutDoc stderr $ formatTerraformError err
+      exitFailure
+    Right schemas -> pure schemas
 
 -- | Load provider specs from a JSON file and then load schemas
 loadFromProvidersFile :: FilePath -> IO ProviderSchemas
 loadFromProvidersFile _path = do
   -- TODO: Implement config file parsing
-  hPutStrLn stderr "Error: --providers-file is not yet implemented"
+  hPutDoc stderr $
+    vsep
+      [ annotate (color Red <> bold) "Error:" <+> "--providers-file is not yet implemented"
+      , mempty
+      ]
   exitFailure
+
+-- | Format TerraformError into a user-friendly colorized message
+formatTerraformError :: TerraformError -> Doc AnsiStyle
+formatTerraformError err = case err of
+  TerraformNotFound ->
+    vsep
+      [ annotate (color Red <> bold) "Error:" <+> "Terraform not found"
+      , hardline
+      , "The 'terraform' command is not available on your system."
+      , "Please install Terraform from" <+> annotate (color Cyan) "https://www.terraform.io/downloads"
+      ]
+  TerraformInitFailed output ->
+    vsep
+      [ annotate (color Red <> bold) "Error:" <+> "Terraform initialization failed"
+      , hardline
+      , "The" <+> annotate (color Yellow) "'terraform init'" <+> "command failed with the following output:"
+      , hardline
+      , formatTerraformOutput output
+      ]
+  SchemaExtractionFailed output ->
+    vsep
+      [ annotate (color Red <> bold) "Error:" <+> "Failed to extract provider schema"
+      , hardline
+      , "The" <+> annotate (color Yellow) "'terraform providers schema -json'" <+> "command failed:"
+      , hardline
+      , formatTerraformOutput output
+      ]
+  SchemaParsingFailed parseErr ->
+    vsep
+      [ annotate (color Red <> bold) "Error:" <+> "Failed to parse provider schema"
+      , hardline
+      , "The schema JSON returned by Terraform could not be parsed:"
+      , hardline
+      , pretty parseErr
+      ]
+
+-- | Format terraform command output with vertical line and red color
+formatTerraformOutput :: String -> Doc AnsiStyle
+formatTerraformOutput =
+  annotate (color Red)
+    . vcat
+    . fmap (\line -> pipe <+> pretty line)
+    . lines
