@@ -1,4 +1,4 @@
-module FileOrganizerSpec (spec) where
+module TerranixCodegen.FileOrganizerSpec (spec) where
 
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)

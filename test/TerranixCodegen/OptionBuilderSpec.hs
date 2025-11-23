@@ -1,4 +1,4 @@
-module OptionBuilderSpec (spec) where
+module TerranixCodegen.OptionBuilderSpec (spec) where
 
 import Data.Map.Strict qualified as Map
 import Nix.TH (nix)

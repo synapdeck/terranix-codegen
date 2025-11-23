@@ -1,4 +1,4 @@
-module ModuleGeneratorSpec (spec) where
+module TerranixCodegen.ModuleGeneratorSpec (spec) where
 
 import Data.Map.Strict qualified as Map
 import Nix.TH (nix)

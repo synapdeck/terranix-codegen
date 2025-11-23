@@ -5,6 +5,7 @@ where
 
 import CLI.Types
 import Control.Monad.Except (runExceptT)
+import Control.Monad.Reader (runReaderT)
 import Data.Aeson (encode)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.ByteString.Lazy qualified as BL
@@ -18,13 +19,13 @@ import TerranixCodegen.FileOrganizer
 import TerranixCodegen.PrettyPrint
 import TerranixCodegen.ProviderSchema
 import TerranixCodegen.ProviderSpec
-import TerranixCodegen.TerraformGenerator (TerraformError (..), extractSchemaFromProviders)
+import TerranixCodegen.TerraformGenerator (GeneratorConfig (..), TerraformError (..), defaultGeneratorConfig, extractSchemaFromProviders)
 
 -- | Execute a command
 runCommand :: Command -> IO ()
 runCommand cmd = case cmd of
-  Generate input output printSchema -> do
-    schemas <- loadSchemas input
+  Generate input output printSchema tfExe -> do
+    schemas <- loadSchemas tfExe input
     if printSchema
       then do
         putDoc $ prettyProviderSchemas schemas
@@ -33,21 +34,21 @@ runCommand cmd = case cmd of
         hPutStrLn stderr $ "Generating modules to: " <> output
         organizeFiles output schemas
         hPutStrLn stderr "✓ Module generation complete!"
-  Show input -> do
-    schemas <- loadSchemas input
+  Show input tfExe -> do
+    schemas <- loadSchemas tfExe input
     putDoc $ prettyProviderSchemas schemas
-  ExtractSchema input prettyJson -> do
-    schemas <- loadSchemas input
+  ExtractSchema input prettyJson tfExe -> do
+    schemas <- loadSchemas tfExe input
     let jsonOutput
           | prettyJson = encodePretty schemas
           | otherwise = encode schemas
     BL.putStr jsonOutput
 
 -- | Load schemas from various input sources
-loadSchemas :: SchemaInput -> IO ProviderSchemas
-loadSchemas input = case input of
+loadSchemas :: Maybe FilePath -> SchemaInput -> IO ProviderSchemas
+loadSchemas tfExe input = case input of
   FromFile maybePath -> loadFromFile maybePath
-  FromProviderSpecs specs -> loadFromProviderSpecs specs
+  FromProviderSpecs specs -> loadFromProviderSpecs tfExe specs
   FromProvidersFile path -> loadFromProvidersFile path
 
 -- | Load schemas from a file or stdin
@@ -73,8 +74,8 @@ loadFromFile maybePath = do
       pure schemas
 
 -- | Load schemas by generating minimal Terraform from provider specs
-loadFromProviderSpecs :: [T.Text] -> IO ProviderSchemas
-loadFromProviderSpecs specTexts = do
+loadFromProviderSpecs :: Maybe FilePath -> [T.Text] -> IO ProviderSchemas
+loadFromProviderSpecs tfExe specTexts = do
   -- Parse provider specifications
   specs <- case mapM parseProviderSpecText specTexts of
     Left err -> do
@@ -96,8 +97,11 @@ loadFromProviderSpecs specTexts = do
       , mempty
       ]
 
-  -- Extract schemas using Terraform
-  result <- runExceptT $ extractSchemaFromProviders specs
+  -- Extract schemas using Terraform with custom executable if provided
+  let config = case tfExe of
+        Nothing -> defaultGeneratorConfig
+        Just exe -> defaultGeneratorConfig {terraformExecutable = exe}
+  result <- runExceptT $ runReaderT (extractSchemaFromProviders specs) config
   case result of
     Left err -> do
       hPutDoc stderr $ formatTerraformError err

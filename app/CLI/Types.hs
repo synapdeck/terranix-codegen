@@ -22,12 +22,15 @@ data Command
       { cmdSchemaInput :: SchemaInput
       , cmdOutput :: FilePath
       , cmdPrintSchema :: Bool
+      , cmdTerraformExecutable :: Maybe FilePath
       }
   | Show
       { cmdSchemaInput :: SchemaInput
+      , cmdTerraformExecutable :: Maybe FilePath
       }
   | ExtractSchema
       { cmdSchemaInput :: SchemaInput
       , cmdPrettyJson :: Bool
+      , cmdTerraformExecutable :: Maybe FilePath
       }
   deriving (Show)

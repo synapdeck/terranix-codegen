@@ -27,6 +27,7 @@ import Text.Megaparsec (
   many,
   optional,
   parse,
+  try,
   (<|>),
  )
 import Text.Megaparsec.Char (alphaNumChar, char)
@@ -85,8 +86,8 @@ parseProviderSpecText input =
 -- | Megaparsec parser for provider specifications
 providerSpecParser :: Parser ProviderSpec
 providerSpecParser = do
-  -- Try to parse namespace first
-  namespace <- optional $ identifierParser <* char '/'
+  -- Try to parse namespace first (use try for proper backtracking)
+  namespace <- optional $ try (identifierParser <* char '/')
 
   -- Parse name
   name <- identifierParser

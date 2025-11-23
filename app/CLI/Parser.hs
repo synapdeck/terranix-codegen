@@ -10,6 +10,18 @@ import Options.Applicative
 import Paths_terranix_codegen (version)
 import Prettyprinter
 
+-- | Parse terraform executable option
+terraformExecutableParser :: Parser (Maybe FilePath)
+terraformExecutableParser =
+  optional
+    ( strOption
+        ( long "terraform-executable"
+            <> short 't'
+            <> metavar "NAME"
+            <> help "Terraform executable name or path (default: tofu)"
+        )
+    )
+
 -- | Parse schema input options (used across multiple commands)
 schemaInputParser :: Parser SchemaInput
 schemaInputParser =
@@ -63,10 +75,14 @@ generateCommand =
       ( long "print-schema"
           <> help "Pretty-print the schema instead of generating modules"
       )
+    <*> terraformExecutableParser
 
 -- | Parser for the 'show' subcommand
 showCommand :: Parser Command
-showCommand = Show <$> schemaInputParser
+showCommand =
+  Show
+    <$> schemaInputParser
+    <*> terraformExecutableParser
 
 -- | Parser for the 'schema' subcommand
 schemaCommand :: Parser Command
@@ -78,6 +94,7 @@ schemaCommand =
           <> short 'P'
           <> help "Pretty-print JSON output (default: compact)"
       )
+    <*> terraformExecutableParser
 
 -- | Parser for all commands
 commandParser :: Parser Command
@@ -131,6 +148,9 @@ footerDoc' =
           , "# Generate from provider specs"
           , "terranix-codegen generate -p aws -p google -o ./modules"
           , "terranix-codegen generate -p hashicorp/aws:5.0.0 -o ./modules"
+          , line
+          , "# Use Terraform instead of OpenTofu (default)"
+          , "terranix-codegen generate -p aws -t terraform"
           , line
           , "# Pretty-print schema from provider spec"
           , "terranix-codegen show -p aws"

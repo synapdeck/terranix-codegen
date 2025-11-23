@@ -1,4 +1,4 @@
-module TypeMapperSpec (spec) where
+module TerranixCodegen.TypeMapperSpec (spec) where
 
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
