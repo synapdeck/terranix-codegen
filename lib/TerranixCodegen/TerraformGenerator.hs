@@ -9,12 +9,13 @@ import Control.Exception (bracket)
 import Control.Monad.Except (MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString.Lazy qualified as BL
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
-import Prettyprinter (Doc, Pretty (pretty), defaultLayoutOptions, indent, layoutPretty, vsep, (<+>))
+import Data.Versions (prettyV)
+import Prettyprinter (Doc, Pretty (pretty), defaultLayoutOptions, dquotes, indent, layoutPretty, vsep, (<+>))
 import Prettyprinter.Render.Text (renderStrict)
 import System.Directory (removeDirectoryRecursive)
 import System.Exit (ExitCode (..))
@@ -100,8 +101,8 @@ generateTerraformConfig specs = renderStrict $ layoutPretty defaultLayoutOptions
       vsep $
         catMaybes
           [ Just $ pretty (providerName spec) <+> "= {"
-          , Just $ indent 2 $ "source" <+> "=" <+> pretty (show $ providerNamespace spec <> "/" <> providerName spec)
-          , fmap (\v -> indent 2 $ "version" <+> "=" <+> pretty (show v)) (providerVersion spec)
+          , Just $ indent 2 $ "source" <+> "=" <+> dquotes (pretty (fromMaybe "hashicorp" (providerNamespace spec) <> "/" <> providerName spec))
+          , fmap (\v -> indent 2 $ "version" <+> "=" <+> dquotes (pretty (prettyV v))) (providerVersion spec)
           , Just "}"
           ]
 

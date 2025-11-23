@@ -14,7 +14,6 @@ module TerranixCodegen.ProviderSpec (
 )
 where
 
-import Control.Monad (void)
 import Data.Aeson (FromJSON (..), ToJSON (..), withText)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -38,14 +37,14 @@ type Parser = Parsec Void Text
 {- | Specification for a Terraform provider
 
 Examples:
- * @hashicorp/aws:5.0.0@ - full specification
- * @hashicorp/aws@ - latest version
- * @aws:5.0.0@ - default namespace (hashicorp)
- * @aws@ - default namespace and latest version
+ * @hashicorp/aws:5.0.0@ - full specification with namespace and version
+ * @hashicorp/aws@ - namespace with latest version
+ * @aws:5.0.0@ - no namespace, with version
+ * @aws@ - no namespace, latest version
 -}
 data ProviderSpec = ProviderSpec
-  { providerNamespace :: !Text
-  -- ^ Provider namespace (e.g., "hashicorp", "cloudflare")
+  { providerNamespace :: !(Maybe Text)
+  -- ^ Provider namespace (e.g., "hashicorp", "cloudflare"), Nothing means no namespace specified
   , providerName :: !Text
   -- ^ Provider name (e.g., "aws", "google", "azurerm")
   , providerVersion :: !(Maybe Versioning)
@@ -67,9 +66,9 @@ instance FromJSON ProviderSpec where
 Supported formats:
 
  * @namespace\/name:version@ - Full specification (e.g., @hashicorp\/aws:5.0.0@)
- * @namespace\/name@ - Use latest version (e.g., @hashicorp\/aws@)
- * @name:version@ - Default to hashicorp namespace (e.g., @aws:5.0.0@)
- * @name@ - Default namespace and latest (e.g., @aws@)
+ * @namespace\/name@ - Namespace with latest version (e.g., @hashicorp\/aws@)
+ * @name:version@ - No namespace, with version (e.g., @aws:5.0.0@)
+ * @name@ - No namespace, latest version (e.g., @aws@)
 
 Returns @Left errorMessage@ if the spec is invalid, @Right ProviderSpec@ otherwise.
 -}
@@ -86,19 +85,11 @@ parseProviderSpecText input =
 -- | Megaparsec parser for provider specifications
 providerSpecParser :: Parser ProviderSpec
 providerSpecParser = do
-  -- Try to parse namespace/name format first
-  (namespace, name) <-
-    ( do
-        ns <- identifierParser
-        void $ char '/'
-        n <- identifierParser
-        pure (ns, n)
-    )
-      <|> ( do
-              -- Otherwise just parse name with default namespace
-              n <- identifierParser
-              pure ("hashicorp", n)
-          )
+  -- Try to parse namespace first
+  namespace <- optional $ identifierParser <* char '/'
+
+  -- Parse name
+  name <- identifierParser
 
   -- Optional version after colon
   version <- optional $ char ':' *> versioning'
@@ -120,8 +111,7 @@ identifierParser = do
 formatProviderSpec :: ProviderSpec -> Text
 formatProviderSpec spec =
   mconcat
-    [ providerNamespace spec
-    , "/"
+    [ maybe "" (<> "/") (providerNamespace spec)
     , providerName spec
     , maybe "" ((":" <>) . prettyV) (providerVersion spec)
     ]
