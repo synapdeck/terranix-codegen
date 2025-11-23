@@ -1,6 +1,6 @@
 {
   imports = [
-    ./ci.nix
+    ./ci
     ./devshell.nix
     ./docs.nix
     ./haskell.nix

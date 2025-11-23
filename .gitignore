@@ -4,6 +4,11 @@ dist-*
 cabal.project.local
 cabal.project.local~
 
+# coverage
+*.tix
+.hpc
+coverage/
+
 # nix
 result
 result-*

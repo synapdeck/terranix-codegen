@@ -16,7 +16,10 @@
       };
 
       settings = {
-        terranix-codegen.check = true;
+        terranix-codegen = {
+          check = true;
+          coverage = true;
+        };
       };
 
       autoWire = ["packages" "apps" "checks"];
