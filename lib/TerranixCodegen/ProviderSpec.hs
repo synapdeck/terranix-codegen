@@ -4,7 +4,6 @@
 module TerranixCodegen.ProviderSpec (
   -- * Types
   ProviderSpec (..),
-  ProvidersConfig (..),
 
   -- * Parsing
   parseProviderSpec,
@@ -16,9 +15,10 @@ module TerranixCodegen.ProviderSpec (
 where
 
 import Control.Monad (void)
-import Data.Aeson (FromJSON (..), ToJSON (..), object, withObject, (.:), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), withText)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Versions (Versioning, prettyV, versioning')
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Text.Megaparsec (
@@ -28,7 +28,6 @@ import Text.Megaparsec (
   many,
   optional,
   parse,
-  some,
   (<|>),
  )
 import Text.Megaparsec.Char (alphaNumChar, char)
@@ -49,51 +48,19 @@ data ProviderSpec = ProviderSpec
   -- ^ Provider namespace (e.g., "hashicorp", "cloudflare")
   , providerName :: !Text
   -- ^ Provider name (e.g., "aws", "google", "azurerm")
-  , providerVersion :: !(Maybe Text)
+  , providerVersion :: !(Maybe Versioning)
   -- ^ Provider version (e.g., "5.0.0"), Nothing means latest
   }
   deriving (Show, Eq, Generic)
 
 instance ToJSON ProviderSpec where
-  toJSON spec =
-    object
-      [ "namespace" .= providerNamespace spec
-      , "name" .= providerName spec
-      , "version" .= providerVersion spec
-      ]
+  toJSON = toJSON . formatProviderSpec
 
 instance FromJSON ProviderSpec where
-  parseJSON = withObject "ProviderSpec" $ \v ->
-    ProviderSpec
-      <$> v .: "namespace"
-      <*> v .: "name"
-      <*> v .: "version"
-
-{- | Configuration file structure for provider specifications
-
-JSON format:
-@
-{
- "providers": [
-   "aws",
-   "hashicorp/google:4.0.0",
-   "cloudflare/cloudflare"
- ]
-}
-@
--}
-newtype ProvidersConfig = ProvidersConfig
-  { configProviders :: [Text]
-  -- ^ List of provider specification strings
-  }
-  deriving (Show, Eq, Generic)
-
-instance ToJSON ProvidersConfig where
-  toJSON config = object ["providers" .= configProviders config]
-
-instance FromJSON ProvidersConfig where
-  parseJSON = withObject "ProvidersConfig" $ \v ->
-    ProvidersConfig <$> v .: "providers"
+  parseJSON = withText "ProviderSpec" $ \txt ->
+    case parseProviderSpecText txt of
+      Left err -> fail err
+      Right spec -> pure spec
 
 {- | Parse a provider specification string
 
@@ -134,7 +101,7 @@ providerSpecParser = do
           )
 
   -- Optional version after colon
-  version <- optional versionParser
+  version <- optional $ char ':' *> versioning'
 
   eof
 
@@ -149,18 +116,12 @@ identifierParser = do
   rest <- many (alphaNumChar <|> char '-' <|> char '_')
   pure $ T.pack (first : rest)
 
--- | Parse a version string after a colon
-versionParser :: Parser Text
-versionParser = do
-  void $ char ':'
-  -- Version can contain alphanumeric, dots, hyphens (e.g., 5.0.0, 1.2.3-beta)
-  version <- some (alphaNumChar <|> char '.' <|> char '-')
-  pure $ T.pack version
-
 -- | Format a provider spec for display
 formatProviderSpec :: ProviderSpec -> Text
 formatProviderSpec spec =
-  providerNamespace spec
-    <> "/"
-    <> providerName spec
-    <> maybe "" (":" <>) (providerVersion spec)
+  mconcat
+    [ providerNamespace spec
+    , "/"
+    , providerName spec
+    , maybe "" ((":" <>) . prettyV) (providerVersion spec)
+    ]
