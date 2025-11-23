@@ -1,23 +1,16 @@
 module TerranixCodegen.FileOrganizerSpec (spec) where
 
 import Data.Map.Strict qualified as Map
-import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Nix.TH (nix)
-import System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, listDirectory, removeDirectoryRecursive)
+import System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Hspec
 
 import TerranixCodegen.FileOrganizer
 import TerranixCodegen.ProviderSchema
-import TerranixCodegen.ProviderSchema.Attribute
-import TerranixCodegen.ProviderSchema.Block
-import TerranixCodegen.ProviderSchema.CtyType
-import TerranixCodegen.ProviderSchema.Provider
-import TerranixCodegen.ProviderSchema.Schema
-import TestUtils (shouldMapTo)
 
 -- | Helper to create an empty SchemaAttribute
 emptyAttr :: SchemaAttribute
@@ -44,14 +37,6 @@ emptyBlock =
     , blockDescription = Nothing
     , blockDescriptionKind = Nothing
     , blockDeprecated = Nothing
-    }
-
--- | Helper to create an empty Schema
-emptySchema :: Schema
-emptySchema =
-  Schema
-    { schemaVersion = 0
-    , schemaBlock = Nothing
     }
 
 -- | Helper to create a simple schema with one attribute

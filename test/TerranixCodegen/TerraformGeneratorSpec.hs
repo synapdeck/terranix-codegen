@@ -5,14 +5,11 @@ import Control.Exception (SomeException, catch)
 import Control.Monad (when)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (runReaderT)
-import Data.Aeson (eitherDecode)
-import Data.ByteString.Lazy qualified as BL
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Versions (Versioning, versioning)
-import System.Directory (doesPathExist, listDirectory)
 import System.Exit (ExitCode (..))
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (readProcessWithExitCode)

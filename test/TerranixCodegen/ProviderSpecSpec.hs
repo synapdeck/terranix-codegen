@@ -6,9 +6,8 @@ import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Versions (Versioning, versioning)
-import Test.Hspec
-import Text.Megaparsec (parse)
 import TerranixCodegen.ProviderSpec
+import Test.Hspec
 
 spec :: Spec
 spec = do
@@ -205,47 +204,47 @@ spec = do
       let original = "hashicorp/aws:5.0.0"
       case parseProviderSpec original of
         Left err -> expectationFailure $ "Parse failed: " <> err
-        Right spec -> formatProviderSpec spec `shouldBe` T.pack original
+        Right parsed -> formatProviderSpec parsed `shouldBe` T.pack original
 
     it "round-trips: parse then format equals original (name only)" $ do
       let original = "aws"
       case parseProviderSpec original of
         Left err -> expectationFailure $ "Parse failed: " <> err
-        Right spec -> formatProviderSpec spec `shouldBe` T.pack original
+        Right parsed -> formatProviderSpec parsed `shouldBe` T.pack original
 
     it "round-trips: parse then format equals original (namespace, no version)" $ do
       let original = "hashicorp/aws"
       case parseProviderSpec original of
         Left err -> expectationFailure $ "Parse failed: " <> err
-        Right spec -> formatProviderSpec spec `shouldBe` T.pack original
+        Right parsed -> formatProviderSpec parsed `shouldBe` T.pack original
 
   describe "JSON serialization" $ do
     it "round-trips ToJSON/FromJSON with all fields" $ do
-      let spec =
+      let providerSpec =
             ProviderSpec
               { providerNamespace = Just "hashicorp"
               , providerName = "aws"
               , providerVersion = mkVersion "5.0.0"
               }
-      decode (encode spec) `shouldBe` Just spec
+      decode (encode providerSpec) `shouldBe` Just providerSpec
 
     it "round-trips ToJSON/FromJSON without namespace" $ do
-      let spec =
+      let providerSpec =
             ProviderSpec
               { providerNamespace = Nothing
               , providerName = "aws"
               , providerVersion = mkVersion "5.0.0"
               }
-      decode (encode spec) `shouldBe` Just spec
+      decode (encode providerSpec) `shouldBe` Just providerSpec
 
     it "round-trips ToJSON/FromJSON without version" $ do
-      let spec =
+      let providerSpec =
             ProviderSpec
               { providerNamespace = Just "hashicorp"
               , providerName = "aws"
               , providerVersion = Nothing
               }
-      decode (encode spec) `shouldBe` Just spec
+      decode (encode providerSpec) `shouldBe` Just providerSpec
 
     it "parses valid JSON string" $ do
       let json = "\"hashicorp/aws:5.0.0\""
@@ -263,13 +262,13 @@ spec = do
       (decode json :: Maybe ProviderSpec) `shouldBe` Nothing
 
     it "serializes to formatted string" $ do
-      let spec =
+      let providerSpec =
             ProviderSpec
               { providerNamespace = Just "hashicorp"
               , providerName = "aws"
               , providerVersion = mkVersion "5.0.0"
               }
-      encode spec `shouldBe` "\"hashicorp/aws:5.0.0\""
+      encode providerSpec `shouldBe` "\"hashicorp/aws:5.0.0\""
 
 -- Helper functions
 
