@@ -1,39 +1,40 @@
-# Type Mapper
+# Type Mapping
 
-The Type Mapper is responsible for converting Terraform's `CtyType` type system to Nix type expressions that work with the NixOS module system.
+The type mapper converts Terraform's [go-cty](https://github.com/zclconf/go-cty) types to NixOS module types. This is the core of the code generation pipeline -- everything else is wiring.
 
-## Overview
+Implementation: `lib/TerranixCodegen/TypeMapper.hs`
 
-Located in `lib/TerranixCodegen/TypeMapper.hs`, the Type Mapper provides two main functions:
+## Mapping table
 
-- `mapCtyTypeToNix :: CtyType -> NExpr` - Maps a Terraform type to a Nix type expression
-- `mapCtyTypeToNixWithOptional :: Bool -> CtyType -> NExpr` - Optionally wraps the type in `types.nullOr`
+### Primitives
 
-## Type Mappings
+| Terraform | Nix |
+|-----------|-----|
+| `string` | `types.str` |
+| `number` | `types.number` |
+| `bool` | `types.bool` |
+| `dynamic` | `types.anything` |
 
-### Primitive Types
+### Collections
 
-| Terraform CtyType | Nix Type Expression | Example |
-|-------------------|---------------------|---------|
-| `CtyBool` | `types.bool` | Boolean values |
-| `CtyNumber` | `types.number` | Integers and floats |
-| `CtyString` | `types.str` | Text strings |
-| `CtyDynamic` | `types.anything` | Untyped/dynamic values |
+| Terraform | Nix | Notes |
+|-----------|-----|-------|
+| `list(T)` | `types.listOf (mapType T)` | |
+| `set(T)` | `types.listOf (mapType T)` | Nix has no set type; mapped to list |
+| `map(T)` | `types.attrsOf (mapType T)` | |
 
-### Collection Types
+### Structural types
 
-| Terraform CtyType | Nix Type Expression | Notes |
-|-------------------|---------------------|-------|
-| `CtyList T` | `types.listOf (mapType T)` | Ordered list |
-| `CtySet T` | `types.listOf (mapType T)` | Unordered set (Nix doesn't distinguish) |
-| `CtyMap T` | `types.attrsOf (mapType T)` | Key-value map |
-| `CtyTuple [T1, T2, ...]` | `types.tupleOf [mapType T1, mapType T2, ...]` | Fixed-length tuple with typed positions |
+| Terraform | Nix |
+|-----------|-----|
+| `object({...})` | `types.submodule { options = {...}; }` |
+| `tuple([...])` | `types.tupleOf [...]` |
 
-### Structural Types
+All mappings are recursive -- a `list(object({name = string}))` produces `types.listOf (types.submodule { options = { name = mkOption { type = types.str; }; }; })`.
 
-#### Objects
+## Objects
 
-Terraform objects become NixOS submodules:
+Terraform objects have typed fields, some of which may be optional:
 
 ```haskell
 CtyObject
@@ -52,11 +53,11 @@ types.submodule {
 }
 ```
 
-#### Tuples
+Optional object fields are wrapped in `types.nullOr`.
 
-Tuples are mapped to a custom `types.tupleOf` type that provides type-safe fixed-length tuples.
+## Tuples
 
-**Example:**
+Terraform tuples are fixed-length lists with per-position types. Nix has no built-in tuple type, so we provide a custom [`types.tupleOf`](../../nix/lib/tuple.nix) that validates both length and per-element types.
 
 ```haskell
 CtyTuple [CtyString, CtyNumber, CtyBool]
@@ -68,154 +69,38 @@ Generates:
 types.tupleOf [types.str types.number types.bool]
 ```
 
-**Features:**
+`tupleOf` is implemented as a proper `mkOptionType` with merge support, functor composition, and position-aware error messages.
 
-- **Fixed length validation**: Ensures the list has exactly the specified number of elements
-- **Per-position type checking**: Each element is validated against its corresponding type
-- **Type composition**: Can be nested and combined with other types like `listOf`, `nullOr`, etc.
-- **Better error messages**: Position-aware errors like "Element \[0\]: expected string, got number"
+## Optional wrapping
 
-**Usage in modules:**
+The type mapper has two entry points:
 
-```nix
-# A module using tupleOf
-{ config, lib, types, ... }:
-{
-  options.connection_info = lib.mkOption {
-    type = types.tupleOf [types.str types.number types.bool];
-    description = "Connection information: [host, port, use_ssl]";
-  };
-}
+- `mapCtyTypeToNix` -- returns the bare type
+- `mapCtyTypeToNixWithOptional` -- wraps in `types.nullOr` when the attribute is optional or computed
 
-# Valid value
-config.connection_info = ["example.com" 443 true];
+This wrapping is applied at the attribute level by the option builder, not within nested type structures.
 
-# Invalid values
-config.connection_info = ["example.com" 443];           # Error: wrong length
-config.connection_info = ["example.com" "443" true];    # Error: wrong type at position 1
-```
+## Attribute semantics
 
-**Implementation:**
+How Terraform's `required`/`optional`/`computed` flags affect the generated option:
 
-The `tupleOf` type is defined in `nix/lib/tuple.nix` and follows NixOS module system conventions:
+| Flags | Type wrapping | Default | readOnly |
+|-------|--------------|---------|----------|
+| required | bare type | none (user must provide) | no |
+| optional | `types.nullOr T` | `null` | no |
+| computed only | `types.nullOr T` | `null` | yes |
+| optional + computed | `types.nullOr T` | `null` | no |
 
-- Uses `mkOptionType` for proper integration
-- Implements `merge` for combining multiple definitions
-- Provides `functor` for type composition
-- Includes `nestedTypes` and `getSubOptions` for documentation generation
+## Block nesting modes
 
-**Common patterns:**
+Nested blocks in Terraform schemas have a nesting mode that determines how they appear in configuration:
 
-```haskell
--- Empty tuple
-CtyTuple []
--- Generates: types.tupleOf []
+| Mode | Nix type | Default |
+|------|----------|---------|
+| `single` | `types.submodule { ... }` | `null` |
+| `group` | `types.submodule { ... }` | none |
+| `list` | `types.listOf (types.submodule { ... })` | `[]` |
+| `set` | `types.listOf (types.submodule { ... })` | `[]` |
+| `map` | `types.attrsOf (types.submodule { ... })` | `{}` |
 
--- Single-element tuple
-CtyTuple [CtyString]
--- Generates: types.tupleOf [types.str]
-
--- Nested collections in tuples
-CtyTuple [CtyList CtyString, CtyMap CtyNumber]
--- Generates: types.tupleOf [(types.listOf types.str) (types.attrsOf types.number)]
-
--- List of tuples (coordinate pairs)
-CtyList (CtyTuple [CtyNumber, CtyNumber])
--- Generates: types.listOf (types.tupleOf [types.number types.number])
-
--- Nested tuples
-CtyTuple [CtyTuple [CtyString, CtyNumber], CtyBool]
--- Generates: types.tupleOf [(types.tupleOf [types.str types.number]) types.bool]
-```
-
-## Optional Field Handling
-
-Optional fields are wrapped in `types.nullOr`:
-
-- `mapCtyTypeToNixWithOptional False CtyString` → `types.str`
-- `mapCtyTypeToNixWithOptional True CtyString` → `types.nullOr types.str`
-
-This allows users to omit optional fields (they default to `null`).
-
-## Implementation Details
-
-### Using hnix
-
-The Type Mapper generates `NExpr` values using the hnix library's AST constructors:
-
-```haskell
-nixTypes :: Text -> NExpr
-nixTypes name = mkSym "types" `mkSelect` name
-
--- Example: types.str
-nixTypes "str"
-
--- Example: types.listOf types.str
-nixTypes "listOf" `mkApp` nixTypes "str"
-```
-
-### Object Generation
-
-Objects require careful construction of nested `NSet` and `Binding` values to create the proper `types.submodule` structure. The implementation uses:
-
-- `NSet` for attribute sets (`{ ... }`)
-- `NamedVar` for bindings (`name = value;`)
-- Recursive calls to handle nested objects
-
-## Testing
-
-The Type Mapper has comprehensive test coverage (25 tests) using:
-
-- **Nix.TH quasiquoter**: Expected values defined with `[nix| ... |]` syntax
-- **stripPositionInfo**: Custom `shouldMapTo` operator that normalizes AST before comparison
-- **Real-world examples**: Tests based on AWS and other provider schemas from documentation
-
-### Test Structure
-
-```haskell
-it "maps CtyList CtyString to types.listOf types.str" $ do
-  mapCtyTypeToNix (CtyList CtyString)
-    `shouldMapTo` [nix| types.listOf types.str |]
-```
-
-The `shouldMapTo` operator is defined as:
-
-```haskell
-shouldMapTo :: NExpr -> NExpr -> Expectation
-shouldMapTo actual expected =
-  stripPositionInfo actual `shouldBe` stripPositionInfo expected
-```
-
-## Usage Example
-
-```haskell
-import TerranixCodegen.TypeMapper
-import TerranixCodegen.ProviderSchema.CtyType
-
--- Simple type
-let stringType = mapCtyTypeToNix CtyString
--- Result: types.str
-
--- Collection type
-let listType = mapCtyTypeToNix (CtyList CtyString)
--- Result: types.listOf types.str
-
--- Object type
-let objType = CtyObject
-      (Map.fromList [("name", CtyString), ("count", CtyNumber)])
-      (Set.fromList ["count"])  -- count is optional
-let nixType = mapCtyTypeToNix objType
--- Result: types.submodule { options = { ... }; }
-```
-
-## Demo Program
-
-Run `cabal run type-mapper-demo` to see examples of all type mappings with pretty-printed Nix output.
-
-## Future Enhancements
-
-- ✅ ~~Add length validation for tuples~~ (Implemented via `types.tupleOf`)
-- Support for additional custom type validators
-- Better handling of complex nested structures
-- Integration with schema metadata (deprecation, sensitivity, etc.)
-- Consider upstreaming `tupleOf` type to nixpkgs
+`set` maps to `listOf` for the same reason as collection sets -- Nix doesn't distinguish ordered from unordered at the type level.

@@ -1,220 +1,76 @@
 # Introduction
 
-**terranix-codegen** is a code generator that automatically creates [Terranix](https://terranix.org/) modules from Terraform provider schemas. It bridges the gap between Terraform's vast provider ecosystem and Terranix's type-safe, Nix-based infrastructure configuration.
+terranix-codegen generates [Terranix](https://terranix.org/) NixOS modules from Terraform provider schemas.
 
-## What is Terranix?
+## What it does
 
-Terranix is a tool that lets you write Terraform configurations using the Nix language instead of HashiCorp Configuration Language (HCL). This brings several advantages:
+Terranix lets you write Terraform configurations in Nix instead of HCL:
 
-- **Type safety**: Leverage Nix's type system and NixOS modules
-- **Composition**: Reuse and combine configurations using Nix's module system
-- **Functional**: Pure, declarative infrastructure definitions
-- **Tooling**: Use Nix's rich ecosystem of tools and libraries
-
-Instead of writing Terraform HCL:
-
-```hcl
-resource "aws_instance" "web" {
-  ami           = "ami-123456"
-  instance_type = "t2.micro"
+```nix
+{
+  resource.aws_instance.web = {
+    ami = "ami-123456";
+    instance_type = "t2.micro";
+  };
 }
 ```
 
-You write Nix:
+This works, but every attribute is essentially untyped -- Terranix accepts any attrset and passes it through to the Terraform JSON. You get no feedback from the NixOS module system about typos, wrong types, or missing required fields.
 
-```nix
-resource.aws_instance.web = {
-  ami = "ami-123456";
-  instance_type = "t2.micro";
-};
-```
+terranix-codegen fixes this by reading the Terraform provider schema (which defines every resource, every attribute, and every type) and generating NixOS module `options` declarations that match the exact structure Terranix already expects. You import the generated modules alongside your config and you get type checking, tab completion, and documentation for free -- without changing how you write your Terranix code.
 
-Terranix then generates the Terraform JSON configuration.
-
-## The Problem
-
-While Terranix is powerful, manually creating Nix modules for every Terraform provider is tedious and error-prone:
-
-- **Hundreds of providers**: AWS alone has 1000+ resources
-- **Frequent updates**: Providers add new resources and attributes constantly
-- **Type information**: Schemas define types, constraints, and documentation
-- **Manual maintenance**: Keeping modules in sync with providers is a full-time job
-
-## The Solution
-
-terranix-codegen solves this by automatically generating Terranix modules from Terraform provider schemas:
-
-```
-Terraform Provider → Schema JSON → terranix-codegen → Nix Modules
-```
-
-### What It Does
-
-1. **Reads** Terraform provider schemas (from `terraform providers schema -json`)
-1. **Parses** the schema into strongly-typed Haskell data structures
-1. **Generates** NixOS modules with proper types and documentation
-1. **Organizes** modules into a clean directory structure
-1. **Produces** documentation (mdBook format) for easy browsing
-
-### What You Get
-
-After running terranix-codegen on the AWS provider, you get:
-
-```
-providers/
-├── aws/
-│   ├── default.nix           # Entry point
-│   ├── provider.nix          # Provider configuration
-│   ├── resources/
-│   │   ├── instance.nix      # aws_instance
-│   │   ├── vpc.nix           # aws_vpc
-│   │   └── ... (1000+ resources)
-│   └── data-sources/
-│       ├── ami.nix           # aws_ami data source
-│       └── ... (100+ data sources)
-└── docs/                     # Generated documentation
-    └── book/                 # Built mdBook site
-```
-
-Each module includes:
-
-- **Type-safe options**: Proper Nix types for every attribute
-- **Documentation**: Descriptions, constraints, deprecation warnings
-- **Validation**: Required/optional checks, nesting modes
-- **Examples**: Usage examples in documentation
-
-## How It Works
-
-terranix-codegen is built in Haskell and uses a multi-phase approach:
-
-### 1. Schema Parsing (✅ Complete)
-
-The schema parser reads Terraform's JSON schema format and converts it into Haskell types:
-
-- `ProviderSchema`: Top-level provider container
-- `Schema`: Individual resource/data source schemas
-- `SchemaBlock`: Nested configuration blocks
-- `SchemaAttribute`: Individual attributes
-- `CtyType`: Terraform's type system (primitives, collections, objects)
-
-See [`app/TerranixCodegen/ProviderSchema/`](../../app/TerranixCodegen/ProviderSchema/) for the complete type definitions.
-
-### 2. Type Mapping (✅ Complete)
-
-Maps Terraform types to Nix types using hnix AST generation:
-
-| Terraform | Nix |
-|-----------|-----|
-| `string` | `types.str` |
-| `number` | `types.number` |
-| `bool` | `types.bool` |
-| `dynamic` | `types.anything` |
-| `list(T)` | `types.listOf (mapType T)` |
-| `set(T)` | `types.listOf (mapType T)` |
-| `map(T)` | `types.attrsOf (mapType T)` |
-| `object({...})` | `types.submodule { options = {...}; }` |
-| `tuple([...])` | `types.listOf types.anything` |
-
-Implementation includes:
-
-- Full support for nested types
-- Optional field handling with `types.nullOr`
-- Comprehensive test coverage with quasiquoter-based assertions
-
-### 3. Module Generation (✅ Complete)
-
-Generates complete NixOS modules from schemas:
-
-- Converts attributes to options using OptionBuilder
-- Handles nested blocks recursively with all nesting modes
-- Preserves metadata (descriptions, deprecations)
-- Generates proper defaults based on nesting mode
-- Creates resource, data source, and provider modules
-- Full test coverage (11/11 tests passing)
-
-### 4. Documentation Generation (🔨 To Build)
-
-Creates mdBook documentation:
-
-- Resource reference pages with examples
-- Argument/attribute listings
-- Block structure documentation
-- Searchable, browsable web interface
-
-## Project Status
-
-**Current State**: Complete end-to-end generation pipeline!
-
-- ✅ **Schema parsing**: Complete and tested
-- ✅ **Design documentation**: Architecture defined
-- ✅ **Type Mapper**: Complete with 25 passing tests
-- ✅ **Option Builder**: Complete with 31 passing tests (including nested attributes)
-- ✅ **Module Generator**: Complete with 11 passing tests
-- ✅ **File Organizer**: Complete with 20 passing tests (86 total)
-- ✅ **CLI**: Complete with optparse-applicative (--input, --output, --print-schema flags)
-- 🔨 **Documentation generation**: Not yet implemented
-
-## Quick Start
+## Usage
 
 ```bash
-# 1. Get provider schema
-cd your-terraform-project/
-terraform init
-terraform providers schema -json > schema.json
+# Generate modules directly from provider specs (uses OpenTofu by default)
+terranix-codegen generate -p aws -o ./providers
+terranix-codegen generate -p hashicorp/aws:5.0.0 -p google -o ./providers
 
-# 2. Generate Terranix modules
-cabal run terranix-codegen -- --input schema.json --output ./terranix-modules
+# Or from an existing schema JSON
+tofu providers schema -json | terranix-codegen generate -o ./providers
 
-# Or from stdin:
-terraform providers schema -json | cabal run terranix-codegen -- --output ./modules
+# Inspect a provider schema
+terranix-codegen show -p aws
 
-# 3. Use the generated modules
-# In your terranix configuration:
+# Dump schema as JSON
+terranix-codegen schema -p aws --pretty
+```
+
+Pass `-t terraform` to use HashiCorp Terraform instead of OpenTofu.
+
+Then import the generated modules in your Terranix config:
+
+```nix
 {
-  imports = [ ./terranix-modules/registry.terraform.io/hashicorp/aws ];
+  imports = [ ./providers/registry.terraform.io/hashicorp/aws ];
 
   resource.aws_instance.web = {
     ami = "ami-123456";
     instance_type = "t2.micro";
   };
 }
-
-# 4. Generate Terraform JSON
-terranix terranix-config.nix > config.tf.json
-
-# 5. Apply with Terraform
-terraform init
-terraform apply
 ```
 
-**Tip**: To inspect a schema without generating modules, use the `--print-schema` flag:
+The generated modules only declare `options` -- they don't change the attrset structure or rename anything. Your existing Terranix configs work as before, but now with type checking.
 
-```bash
-terraform providers schema -json | cabal run terranix-codegen -- --print-schema
+## Output structure
+
+```
+providers/
+├── default.nix
+└── registry.terraform.io/
+    └── hashicorp/
+        └── aws/
+            ├── default.nix
+            ├── provider.nix
+            ├── resources/
+            │   ├── default.nix
+            │   ├── instance.nix
+            │   └── ...
+            └── data-sources/
+                ├── default.nix
+                ├── ami.nix
+                └── ...
 ```
 
-## Documentation
-
-This documentation covers the design and architecture of terranix-codegen:
-
-- **[Design Overview](./design-overview.md)**: Architecture, components, and design decisions
-- **[Transformation Examples](./examples.md)**: Concrete examples of schema → module transformations
-- **[Documentation Generation](./documentation-generation.md)**: Strategy for generating user documentation
-
-## Why Haskell?
-
-terranix-codegen is written in Haskell for several reasons:
-
-- **Type safety**: The schema is complex and recursive; Haskell's type system catches errors
-- **Parsing**: `aeson` and `autodocodec` make JSON parsing straightforward
-- **Code generation**: Pure functions and algebraic data types make generation logic clear
-- **Correctness**: Strong typing ensures generated modules match schemas exactly
-- **Nix integration**: Both Haskell and Nix have excellent tooling in nixpkgs
-
-## Contributing
-
-(Future section for contribution guidelines)
-
-## License
-
-terranix-codegen is licensed under the [Mozilla Public License 2.0 (MPL-2.0)](https://www.mozilla.org/en-US/MPL/2.0/).
+Each `default.nix` imports its siblings. You can import a whole provider or individual resource files.

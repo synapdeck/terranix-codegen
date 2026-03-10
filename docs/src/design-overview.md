@@ -1,539 +1,76 @@
-# Terranix Module Generator Design
+# Architecture
 
-## Overview
+terranix-codegen is a Haskell pipeline that transforms Terraform provider schemas into NixOS module files.
 
-The Terranix Module Generator is a tool that automatically generates [Terranix](https://terranix.org/) modules from Terraform provider schemas. It bridges the gap between Terraform's provider ecosystem and Terranix's Nix-based configuration approach, enabling type-safe, composable infrastructure definitions.
-
-### Goals
-
-- **Automation**: Eliminate manual translation of Terraform provider schemas to Terranix modules
-- **Correctness**: Ensure generated modules accurately reflect provider schemas
-- **Type Safety**: Leverage NixOS module system for compile-time validation
-- **Maintainability**: Support easy regeneration when providers update
-- **Usability**: Provide intuitive CLI and well-documented output
-
-## Architecture Overview
+## Pipeline
 
 ```
-┌─────────────────────┐
-│ terraform providers │
-│  schema -json       │
-└──────────┬──────────┘
-           │ JSON
-           ▼
-┌─────────────────────┐
-│  Schema Parser      │  (Already implemented)
-│  ProviderSchemas    │
-└──────────┬──────────┘
-           │ Haskell Types
-           ▼
-┌─────────────────────┐
-│  Module Generator   │  (To be implemented)
-│  - Type Mapper      │
-│  - Option Builder   │
-│  - File Organizer   │
-└──────────┬──────────┘
-           │ Nix Modules
-           ▼
-┌─────────────────────┐
-│  Output             │
-│  providers/         │
-│    aws/             │
-│      resources/     │
-│      data-sources/  │
-│    ...              │
-└─────────────────────┘
+Provider spec       e.g. "hashicorp/aws:5.0.0"
+      │
+      ▼
+TerraformGenerator  generates minimal .tf, runs tofu init + providers schema -json
+      │
+      ▼
+ProviderSchema      parses JSON into Haskell ADTs (CtyType, SchemaAttribute, SchemaBlock, etc.)
+      │
+      ▼
+TypeMapper          CtyType → hnix NExpr (e.g. CtyString → types.str)
+      │
+      ▼
+OptionBuilder       SchemaAttribute → mkOption { type = ...; default = ...; description = ...; }
+      │
+      ▼
+ModuleGenerator     assembles options into { lib, ... }: with lib; { options.resource.X = ...; }
+      │
+      ▼
+FileOrganizer       writes one .nix file per resource/data source + default.nix imports
 ```
 
-### Component Responsibilities
+Each stage is independent and tested separately.
 
-1. **Schema Parser** (✅ Complete)
+## Key modules
 
-   - Parses Terraform provider schema JSON
-   - Validates schema structure
-   - Provides strongly-typed Haskell representation
-   - Location: `lib/TerranixCodegen/ProviderSchema/`
+| Module | File | What it does |
+|--------|------|-------------|
+| ProviderSpec | `lib/TerranixCodegen/ProviderSpec.hs` | Parses provider spec strings (`aws`, `hashicorp/aws:5.0.0`) |
+| TerraformGenerator | `lib/TerranixCodegen/TerraformGenerator.hs` | Runs tofu/terraform to extract schema JSON |
+| ProviderSchema | `lib/TerranixCodegen/ProviderSchema/` | JSON parsing into Haskell types (aeson) |
+| TypeMapper | `lib/TerranixCodegen/TypeMapper.hs` | go-cty type → NixOS module type |
+| OptionBuilder | `lib/TerranixCodegen/OptionBuilder.hs` | Schema attribute → `mkOption` expression |
+| ModuleGenerator | `lib/TerranixCodegen/ModuleGenerator.hs` | Assembles complete NixOS modules |
+| FileOrganizer | `lib/TerranixCodegen/FileOrganizer.hs` | Directory structure and file writing |
+| PrettyPrint | `lib/TerranixCodegen/PrettyPrint.hs` | Colorized terminal output for `show` command |
 
-1. **Type Mapper** (✅ Complete)
+## Schema types
 
-   - Maps Terraform `CtyType` to Nix type expressions
-   - Handles primitive, collection, and structural types
-   - Preserves type constraints and metadata
-   - Supports optional field wrapping with `types.nullOr`
-   - Location: `lib/TerranixCodegen/TypeMapper.hs`
-   - Tests: `test/TypeMapperSpec.hs` (18/18 passing)
+The Terraform provider schema is parsed into these Haskell types:
 
-1. **Option Builder** (✅ Complete)
+- **`ProviderSchemas`** -- top-level container mapping registry paths to providers
+- **`ProviderSchema`** -- one provider's config schema, resource schemas, and data source schemas
+- **`Schema`** -- a single resource/data source, containing a `SchemaBlock`
+- **`SchemaBlock`** -- has `blockAttributes` (a map of `SchemaAttribute`) and `blockNestedBlocks` (a map of `SchemaBlockType`)
+- **`SchemaAttribute`** -- type, description, required/optional/computed flags, deprecation, sensitivity
+- **`SchemaBlockType`** -- a nested block with a nesting mode (single/group/list/set/map) and an inner `SchemaBlock`
+- **`CtyType`** -- Terraform's type system: `Bool`, `Number`, `String`, `Dynamic`, `List T`, `Set T`, `Map T`, `Object fields optionals`, `Tuple elems`
 
-   - Converts schema attributes to NixOS options
-   - Generates documentation from schema descriptions
-   - Handles required/optional/computed semantics
-   - Supports metadata (deprecated, sensitive, write-only)
-   - Fully supports nested attributes with all nesting modes
-   - Location: `lib/TerranixCodegen/OptionBuilder.hs`
-   - Tests: `test/OptionBuilderSpec.hs` (31/31 passing)
+## Code generation approach
 
-1. **Module Generator** (✅ Complete)
+All Nix code is generated through [hnix](https://github.com/haskell-nix/hnix)'s `NExpr` AST and pretty-printer. No string templates. This means:
 
-   - Assembles complete NixOS modules from schemas
-   - Handles nested blocks recursively
-   - Manages all nesting modes (single, group, list, set, map)
-   - Generates resource, data source, and provider modules
-   - Location: `lib/TerranixCodegen/ModuleGenerator.hs`
-   - Tests: `test/ModuleGeneratorSpec.hs` (11/11 passing)
+- The generated code is always syntactically valid
+- Type mappings are compositional (you can nest them freely)
+- The pretty-printer handles formatting
 
-1. **File Organizer** (✅ Complete)
+The final step uses `nixExprToText` (which calls hnix's `prettyNix`) to render the AST to text.
 
-   - Creates directory structure
-   - Generates import/export files
-   - Manages cross-module references
-   - Location: `lib/TerranixCodegen/FileOrganizer.hs`
-   - Tests: `test/FileOrganizerSpec.hs` (20/20 passing)
+## Design decisions
 
-## Type Mapping Strategy
+**NixOS modules with no `config` block.** The generated modules only declare `options`. Because the option paths (`resource.<type>.<name>.<attr>`) exactly match the attrset structure Terranix already consumes, no transformation is needed. The module system validates the values and passes them through as-is.
 
-The core challenge is mapping Terraform's type system (go-cty) to Nix's type system (NixOS modules).
+**One file per resource.** Large providers like AWS have 1000+ resources. A single file would be unmanageable. Individual files also make git diffs clean and allow selective imports.
 
-### Primitive Types
+**hnix AST instead of string templates.** More verbose to write, but impossible to generate malformed Nix. Also makes testing easier -- tests compare ASTs directly using hnix's quasiquoter.
 
-| Terraform CtyType | Nix Type | Notes |
-| ----------------- | ---------------- | ---------------------- |
-| `CtyBool` | `types.bool` | Direct mapping |
-| `CtyNumber` | `types.number` | Includes int and float |
-| `CtyString` | `types.str` | Direct mapping |
-| `CtyDynamic` | `types.anything` | Untyped/dynamic values |
+**`types.nullOr` for optional attributes.** Matches Terraform's semantics where omitted optional attributes are treated as null/unset. Using `null` as the default lets optional+computed attributes fall through to provider-computed values.
 
-### Collection Types (Homogeneous)
-
-| Terraform CtyType | Nix Type | Example |
-| ----------------- | --------------------------- | ---------------------- |
-| `CtyList t` | `types.listOf (mapType t)` | `["a", "b"]` |
-| `CtySet t` | `types.listOf (mapType t)` | Similar to list in Nix |
-| `CtyMap t` | `types.attrsOf (mapType t)` | `{key = value;}` |
-
-**Note**: Terraform Sets and Lists both map to `types.listOf` since Nix doesn't distinguish ordered/unordered at the type level.
-
-### Structural Types
-
-#### Objects
-
-```haskell
-CtyObject (Map Text CtyType) (Set Text)  -- attributes, optionals
-```
-
-Maps to:
-
-```nix
-types.submodule {
-  options = {
-    attr1 = mkOption { type = ...; };
-    attr2 = mkOption { type = ...; default = null; };  # if optional
-  };
-}
-```
-
-#### Tuples
-
-```haskell
-CtyTuple [CtyType]
-```
-
-Maps to:
-
-```nix
-types.listOf types.anything  # with length validation
-```
-
-Or for known positions:
-
-```nix
-# Custom type validator checking length and element types
-```
-
-### Attribute Semantics
-
-Terraform attributes have three orthogonal properties that affect Nix module generation:
-
-| Property | Meaning | Nix Representation |
-| ------------ | ----------------- | ------------------------------------ |
-| **Required** | Must be in config | No `default` value |
-| **Optional** | May be omitted | `default = null;` |
-| **Computed** | Set by provider | `readOnly = true;` (if not settable) |
-
-**Combinations**:
-
-- `required=true`: User must provide value
-- `optional=true`: User may provide value, `default = null;`
-- `computed=true`: Provider can compute value
-- `optional + computed`: User can provide OR provider computes
-- Neither: Unusual, treat as optional
-
-### Nested Blocks
-
-Schema blocks with nesting modes map to different Nix structures:
-
-| Nesting Mode | Terraform Example | Nix Type |
-| --------------- | ------------------ | ------------------------------------------- |
-| `NestingSingle` | Single block | `types.submodule { ... }` |
-| `NestingGroup` | Single, never null | `types.submodule { ... }` (no default null) |
-| `NestingList` | Ordered list | `types.listOf (types.submodule { ... })` |
-| `NestingSet` | Unordered list | `types.listOf (types.submodule { ... })` |
-| `NestingMap` | Map of blocks | `types.attrsOf (types.submodule { ... })` |
-
-**Min/Max Items**: When specified, add validators:
-
-```nix
-type = types.listOf types.submodule { ... };
-# Add assertion: length >= minItems && length <= maxItems
-```
-
-### Metadata Preservation
-
-Schema metadata is preserved in generated modules:
-
-- **Description**: → `description = "...";`
-- **Description Kind**: Markdown descriptions use proper formatting
-- **Deprecated**: → `warnings` in option definition
-- **Sensitive**: → Documentation note (Nix doesn't hide values)
-- **WriteOnly**: → Documentation note
-
-## Module Structure
-
-Generated modules follow a consistent directory structure that mirrors Terraform's organization:
-
-```
-providers/
-├── {provider-name}/           # e.g., "aws", "google", "azurerm"
-│   ├── default.nix            # Provider module entry point
-│   ├── provider.nix           # Provider configuration options
-│   ├── resources/
-│   │   ├── default.nix        # Re-exports all resources
-│   │   ├── {resource-name}.nix
-│   │   └── ...
-│   ├── data-sources/
-│   │   ├── default.nix        # Re-exports all data sources
-│   │   ├── {data-source-name}.nix
-│   │   └── ...
-│   └── functions/             # Provider functions (if any)
-│       ├── default.nix
-│       └── ...
-└── default.nix                # Top-level exports all providers
-```
-
-### Module Format
-
-Each resource/data source module follows this template:
-
-```nix
-{ lib, ... }:
-with lib;
-{
-  options.{provider}.{resource_name}.{instance_name} = mkOption {
-    type = types.attrsOf (types.submodule ({ config, ... }: {
-      options = {
-        # Generated options from schema
-        id = mkOption {
-          type = types.str;
-          description = "Unique identifier (computed)";
-          # Computed-only attributes might be readOnly
-        };
-
-        name = mkOption {
-          type = types.str;
-          description = "Resource name";
-          # Required attribute has no default
-        };
-
-        tags = mkOption {
-          type = types.attrsOf types.str;
-          description = "Key-value tags";
-          default = {};
-        };
-
-        # Nested block example
-        nested_config = mkOption {
-          type = types.listOf (types.submodule {
-            options = {
-              # Nested options...
-            };
-          });
-          default = [];
-        };
-      };
-    }));
-    default = {};
-    description = "Instances of {provider}_{resource_name}";
-  };
-}
-```
-
-### Provider Configuration Module
-
-The provider configuration module (`provider.nix`) defines provider-level settings:
-
-```nix
-{ lib, ... }:
-with lib;
-{
-  options.{provider_name} = mkOption {
-    type = types.attrsOf (types.submodule {
-      options = {
-        # Provider configuration options from configSchema
-        region = mkOption {
-          type = types.str;
-          description = "AWS region";
-        };
-
-        access_key = mkOption {
-          type = types.nullOr types.str;
-          default = null;
-          description = "AWS access key";
-        };
-
-        # ... more provider options
-      };
-    });
-    default = {};
-    description = "{provider_name} provider configuration";
-  };
-}
-```
-
-### Cross-Module References
-
-The `default.nix` files enable easy imports:
-
-```nix
-# providers/aws/default.nix
-{
-  imports = [
-    ./provider.nix
-    ./resources
-    ./data-sources
-  ];
-}
-
-# providers/aws/resources/default.nix
-{
-  imports = [
-    ./instance.nix
-    ./vpc.nix
-    ./subnet.nix
-    # ... all resources
-  ];
-}
-```
-
-Users can import selectively:
-
-```nix
-{
-  imports = [ ./providers/aws ];  # Everything
-  # OR
-  imports = [ ./providers/aws/resources/instance.nix ];  # Just one resource
-}
-```
-
-## CLI & User Workflow
-
-### Input: Provider Schema
-
-Users generate schema JSON using Terraform CLI:
-
-```bash
-# Initialize provider
-terraform init
-
-# Export schema
-terraform providers schema -json > schema.json
-```
-
-This produces a JSON file with the complete provider schema structure.
-
-### Tool Invocation
-
-Basic usage:
-
-```bash
-terranix-codegen < schema.json
-```
-
-With options:
-
-```bash
-terranix-codegen \
-  --input schema.json \
-  --output ./terranix-modules
-```
-
-To inspect a schema without generating modules:
-
-```bash
-terranix-codegen --print-schema < schema.json
-# Or:
-terranix-codegen -i schema.json -p
-```
-
-### CLI Arguments
-
-| Flag | Description | Default |
-| ------------------------- | --------------------------------------- | ------------- |
-| `--input FILE`, `-i` | Input schema JSON (or stdin) | stdin |
-| `--output DIR`, `-o` | Output directory | `./providers` |
-| `--print-schema`, `-p` | Pretty-print schema instead of generating modules | N/A |
-
-**Future enhancements:**
-
-- `--provider NAME` | Generate only specific provider(s) | all |
-- `--resource PATTERN` | Filter resources by pattern | all |
-- `--data-source PATTERN` | Filter data sources by pattern | all |
-- `--format-style STYLE` | Nix formatter (nixfmt, alejandra, none) | nixfmt |
-- `--no-docs` | Skip generating documentation comments | false |
-
-### Output
-
-The tool generates a complete Nix module hierarchy:
-
-```
-providers/
-├── aws/
-│   ├── default.nix
-│   ├── provider.nix
-│   ├── resources/
-│   │   ├── default.nix
-│   │   ├── instance.nix
-│   │   ├── vpc.nix
-│   │   └── ... (100+ files)
-│   └── data-sources/
-│       ├── default.nix
-│       ├── ami.nix
-│       └── ... (50+ files)
-└── default.nix
-```
-
-### Integration with Terranix Projects
-
-Users can integrate generated modules into existing terranix projects:
-
-```nix
-# terranix-config.nix
-{
-  imports = [
-    # Import generated modules
-    ./providers/aws
-  ];
-
-  # Use generated options
-  resource.aws_instance.web = {
-    ami = "ami-12345";
-    instance_type = "t2.micro";
-    tags = {
-      Name = "web-server";
-    };
-  };
-}
-```
-
-Then generate Terraform JSON:
-
-```bash
-terranix terranix-config.nix > terraform.json
-terraform init
-terraform apply
-```
-
-### Update Workflow
-
-When providers update:
-
-1. Update Terraform providers: `terraform init -upgrade`
-1. Export new schema: `terraform providers schema -json > schema.json`
-1. Regenerate modules: `terranix-codegen < schema.json`
-1. Review changes (via git diff)
-1. Update configurations if breaking changes
-
-## Design Decisions
-
-### Why NixOS Modules?
-
-**Advantages**:
-
-- **Type safety**: Catch configuration errors before runtime
-- **Composition**: Easily combine and override configurations
-- **Documentation**: Self-documenting via option descriptions
-- **Validation**: Built-in constraint checking
-- **IDE support**: Nix language servers understand module structure
-
-**Trade-offs**:
-
-- More verbose than raw Terraform HCL
-- Learning curve for Nix module system
-- Generated files are larger
-
-### Why Generate Per-Resource Files?
-
-**Advantages**:
-
-- **Performance**: Import only needed resources
-- **Clarity**: Easy to find and read individual resource definitions
-- **Git-friendly**: Changes to provider affect only modified resources
-- **Debugging**: Clear source of type errors
-
-**Trade-offs**:
-
-- More files to manage (100+ for large providers)
-- Longer generation time
-- Larger disk footprint
-
-**Alternative considered**: Single file per provider (rejected due to 10,000+ line files)
-
-### Why Preserve Schema Metadata?
-
-Keeping descriptions, deprecation warnings, and other metadata ensures:
-
-- Generated modules are self-documenting
-- Users get IDE hints and warnings
-- Deprecated options are clearly marked
-- Migration to new schemas is smoother
-
-### Why Support Filtering?
-
-Large providers (AWS, Google Cloud) have hundreds of resources. Filtering allows:
-
-- Faster generation for specific use cases
-- Smaller module footprint
-- Focused updates when only certain resources change
-
-### Code Generation vs. Runtime Parsing
-
-**Decision**: Code generation (static Nix modules)
-
-**Rationale**:
-
-- Nix modules provide compile-time safety
-- No runtime dependencies on terranix-codegen
-- Better IDE/tooling support
-- Clearer error messages
-- Can version generated modules independently
-
-**Alternative**: Runtime schema parsing (rejected due to poor UX)
-
-## Future Enhancements
-
-Potential future improvements:
-
-1. **Incremental Generation**: Only regenerate changed resources
-1. **Custom Overlays**: User-defined modifications to generated modules
-1. **Migration Helpers**: Automated config updates for breaking changes
-1. **Validation Functions**: Generate custom validators for complex constraints
-1. **Test Generation**: Generate basic terranix tests for each resource
-1. **Documentation Site**: Generate browsable documentation (mdbook/nixos-manual)
-1. **Provider Plugins**: Custom generation logic for specific providers
-1. **Schema Caching**: Cache schemas to speed up regeneration
-
-## References
-
-- [Terraform Provider Schema](https://www.terraform.io/internals/json-format#provider-schemas)
-- [Terranix Documentation](https://terranix.org/)
-- [NixOS Module System](https://nixos.org/manual/nixos/stable/index.html#sec-writing-modules)
-- [go-cty Type System](https://github.com/zclconf/go-cty)
+**Custom `types.tupleOf`.** Terraform has typed fixed-length tuples. Nix doesn't have a built-in equivalent, so we provide one in `nix/lib/tuple.nix` that validates both length and per-position types.
