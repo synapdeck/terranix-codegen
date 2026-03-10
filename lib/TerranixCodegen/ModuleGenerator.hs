@@ -31,9 +31,12 @@ Creates a module with the structure:
     options.resource.{resourceType} = mkOption {
       type = types.attrsOf (types.submodule { options = {...}; });
       default = {};
-      description = "Instances of {resourceType}";
+      description = "<schema block description or fallback>";
     };
   }
+
+Uses the schema's block description when available, otherwise falls back to
+"Instances of {resourceType}".
 
 Example:
   generateResourceModule "aws" "aws_instance" schema
@@ -154,9 +157,12 @@ Creates a module with the structure:
     options.provider.{providerName} = mkOption {
       type = types.attrsOf (types.submodule { options = {...}; });
       default = {};
-      description = "{providerName} provider configuration";
+      description = "<schema block description or fallback>";
     };
   }
+
+Uses the schema's block description when available, otherwise falls back to
+"{providerName} provider configuration".
 -}
 generateProviderModule :: Text -> Schema -> NExpr
 generateProviderModule providerName schema =
