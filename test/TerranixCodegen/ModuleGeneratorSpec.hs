@@ -9,7 +9,7 @@ import TerranixCodegen.ProviderSchema.Attribute
 import TerranixCodegen.ProviderSchema.Block
 import TerranixCodegen.ProviderSchema.CtyType
 import TerranixCodegen.ProviderSchema.Schema
-import TerranixCodegen.ProviderSchema.Types (SchemaNestingMode (..))
+import TerranixCodegen.ProviderSchema.Types (SchemaDescriptionKind (..), SchemaNestingMode (..))
 import TestUtils (shouldMapTo)
 
 -- | Helper to create an empty SchemaAttribute
@@ -276,6 +276,95 @@ spec = do
               };
             }
           |]
+
+  describe "block descriptions" $ do
+    it "adds deprecation note to nested block description" $ do
+      let nestedBlock =
+            emptyBlock
+              { blockAttributes =
+                  Just $
+                    Map.fromList
+                      [("enabled", emptyAttr {attributeType = Just CtyBool, attributeRequired = Just True})]
+              , blockDescription = Just "Old monitoring config"
+              , blockDeprecated = Just True
+              }
+          blockType =
+            SchemaBlockType
+              { blockTypeNestingMode = Just NestingSingle
+              , blockTypeBlock = Just nestedBlock
+              , blockTypeMinItems = Nothing
+              , blockTypeMaxItems = Nothing
+              }
+          block =
+            emptyBlock
+              { blockNestedBlocks =
+                  Just $
+                    Map.fromList [("monitoring", blockType)]
+              }
+      blockToSubmodule block
+        `shouldMapTo` [nix|
+        types.submodule {
+          options = {
+            monitoring = mkOption {
+              type = types.submodule {
+                options = {
+                  enabled = mkOption {
+                    type = types.bool;
+                  };
+                };
+              };
+              default = null;
+              description = ''
+                Old monitoring config
+
+                DEPRECATED: This block is deprecated and may be removed in a future version.
+              '';
+            };
+          };
+        }
+        |]
+
+    it "wraps markdown block description with lib.mdDoc" $ do
+      let nestedBlock =
+            emptyBlock
+              { blockAttributes =
+                  Just $
+                    Map.fromList
+                      [("enabled", emptyAttr {attributeType = Just CtyBool, attributeRequired = Just True})]
+              , blockDescription = Just "Enable monitoring"
+              , blockDescriptionKind = Just Markdown
+              }
+          blockType =
+            SchemaBlockType
+              { blockTypeNestingMode = Just NestingSingle
+              , blockTypeBlock = Just nestedBlock
+              , blockTypeMinItems = Nothing
+              , blockTypeMaxItems = Nothing
+              }
+          block =
+            emptyBlock
+              { blockNestedBlocks =
+                  Just $
+                    Map.fromList [("monitoring", blockType)]
+              }
+      blockToSubmodule block
+        `shouldMapTo` [nix|
+          types.submodule {
+            options = {
+              monitoring = mkOption {
+                type = types.submodule {
+                  options = {
+                    enabled = mkOption {
+                      type = types.bool;
+                    };
+                  };
+                };
+                default = null;
+                description = lib.mdDoc "Enable monitoring";
+              };
+            };
+          }
+        |]
 
   describe "generateResourceModule" $ do
     it "generates complete resource module with simple attributes" $ do
