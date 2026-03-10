@@ -122,9 +122,6 @@ test-suite terranix-codegen-tests
     text ^>=2.1,
     versions ^>=6.0,
 
-  build-tool-depends:
-    hspec-discover:hspec-discover ^>=2.11
-
   default-extensions:
     OverloadedStrings
     QuasiQuotes
