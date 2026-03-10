@@ -7,7 +7,7 @@ import Test.Hspec
 import TerranixCodegen.OptionBuilder
 import TerranixCodegen.ProviderSchema.Attribute
 import TerranixCodegen.ProviderSchema.CtyType
-import TerranixCodegen.ProviderSchema.Types (SchemaNestingMode (..))
+import TerranixCodegen.ProviderSchema.Types (SchemaDescriptionKind (..), SchemaNestingMode (..))
 import TestUtils (shouldMapTo)
 
 -- | Helper to create a minimal SchemaAttribute
@@ -400,6 +400,45 @@ spec = do
               type = types.nullOr types.anything;
               default = null;
               description = "Dynamic value";
+            }
+          |]
+
+    describe "markdown descriptions" $ do
+      it "wraps markdown description with lib.mdDoc" $ do
+        let attr =
+              emptyAttr
+                { attributeType = Just CtyString
+                , attributeDescription = Just "The AMI ID"
+                , attributeDescriptionKind = Just Markdown
+                , attributeRequired = Just True
+                }
+        buildOption "ami" attr
+          `shouldMapTo` [nix|
+            mkOption {
+              type = types.str;
+              description = lib.mdDoc "The AMI ID";
+            }
+          |]
+
+      it "wraps multi-line markdown description with lib.mdDoc" $ do
+        let attr =
+              emptyAttr
+                { attributeType = Just CtyString
+                , attributeDescription = Just "The AMI ID"
+                , attributeDescriptionKind = Just Markdown
+                , attributeComputed = Just True
+                }
+        buildOption "ami" attr
+          `shouldMapTo` [nix|
+            mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = lib.mdDoc ''
+                The AMI ID
+
+                This value is computed by the provider.
+              '';
+              readOnly = true;
             }
           |]
 

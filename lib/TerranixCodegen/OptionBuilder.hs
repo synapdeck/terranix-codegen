@@ -8,10 +8,10 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Nix.Expr.Shorthands
 import Nix.Expr.Types
 
+import TerranixCodegen.Description qualified as Description
 import TerranixCodegen.ProviderSchema.Attribute
 import TerranixCodegen.ProviderSchema.Types (SchemaNestingMode (..))
 import TerranixCodegen.TypeMapper (mapCtyTypeToNixWithOptional)
@@ -61,13 +61,12 @@ buildOption _attrName attr =
 
     -- Description binding (if description exists)
     descriptionBinding =
-      case buildDescription attr of
+      case Description.fromAttribute attr of
         Just desc ->
           Just $
             NamedVar
               (mkSelector "description")
-              -- Use indented strings for multi-line, regular strings for single-line
-              (if T.any (== '\n') desc then mkIndentedStr 16 desc else mkStr desc)
+              (Description.toNExpr desc)
               nullPos
         Nothing -> Nothing
 
@@ -139,62 +138,6 @@ buildDefault attr
   | isOptionalAttribute attr = Just mkNull
   -- Otherwise no default
   | otherwise = Nothing
-
-{- | Build a comprehensive description from schema metadata.
-
-Combines:
-  - Base description text
-  - Deprecation warnings
-  - Sensitivity warnings
-  - Write-only notes
-  - Computed attribute notes
--}
-buildDescription :: SchemaAttribute -> Maybe Text
-buildDescription attr =
-  if T.null combinedDesc
-    then Nothing
-    else Just finalDesc
-  where
-    nonEmptyParts = filter (not . T.null) parts
-    combinedDesc = T.intercalate "\n\n" nonEmptyParts
-
-    -- Add trailing newline only for multi-line descriptions (more than one part)
-    finalDesc =
-      if length nonEmptyParts > 1
-        then combinedDesc <> "\n"
-        else combinedDesc
-
-    parts =
-      [ baseDesc
-      , deprecationNote
-      , sensitiveNote
-      , writeOnlyNote
-      , computedNote
-      ]
-
-    baseDesc = fromMaybe "" (attributeDescription attr)
-
-    deprecationNote =
-      if fromMaybe False (attributeDeprecated attr)
-        then "DEPRECATED: This attribute is deprecated and may be removed in a future version."
-        else ""
-
-    sensitiveNote =
-      if fromMaybe False (attributeSensitive attr)
-        then "WARNING: This attribute contains sensitive information and will not be displayed in logs."
-        else ""
-
-    writeOnlyNote =
-      if fromMaybe False (attributeWriteOnly attr)
-        then "NOTE: This attribute is write-only and will not be persisted in the Terraform state."
-        else ""
-
-    computedNote =
-      if fromMaybe False (attributeComputed attr)
-        && not (fromMaybe False (attributeRequired attr))
-        && not (fromMaybe False (attributeOptional attr))
-        then "This value is computed by the provider."
-        else ""
 
 {- | Determine if an attribute should be marked as read-only.
 
