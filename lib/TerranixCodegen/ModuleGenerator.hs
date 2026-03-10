@@ -15,6 +15,7 @@ import Data.Text (Text)
 import Nix.Expr.Shorthands
 import Nix.Expr.Types
 
+import TerranixCodegen.Description qualified as Description
 import TerranixCodegen.OptionBuilder (attributesToSubmodule, buildOption)
 import TerranixCodegen.ProviderSchema.Attribute
 import TerranixCodegen.ProviderSchema.Block
@@ -274,8 +275,8 @@ blockTypeToBinding name blockType =
         Just NestingMap -> Just $ NamedVar (mkSelector "default") (Fix $ NSet NonRecursive []) nullPos
         Nothing -> Just $ NamedVar (mkSelector "default") mkNull nullPos -- Default to Single behavior
     descriptionBinding =
-      case blockDescription (fromMaybe emptyBlock (blockTypeBlock blockType)) of
-        Just desc -> Just $ NamedVar (mkSelector "description") (mkStr desc) nullPos
+      case blockTypeBlock blockType >>= Description.fromBlock of
+        Just desc -> Just $ NamedVar (mkSelector "description") (Description.toNExpr desc) nullPos
         Nothing -> Nothing
 
 {- | Apply a nesting mode wrapper to a submodule type.
@@ -374,14 +375,3 @@ nixTypes name = mkSym "types" `mkSelect` name
 -- | Helper to build a select expression (attribute access)
 mkSelect :: NExpr -> Text -> NExpr
 mkSelect expr attr = Fix $ NSelect Nothing expr (mkSelector attr)
-
--- | Empty SchemaBlock for fallback cases
-emptyBlock :: SchemaBlock
-emptyBlock =
-  SchemaBlock
-    { blockAttributes = Nothing
-    , blockNestedBlocks = Nothing
-    , blockDescription = Nothing
-    , blockDescriptionKind = Nothing
-    , blockDeprecated = Nothing
-    }
