@@ -5,6 +5,7 @@
 
   perSystem = {
     config,
+    inputs',
     pkgs,
     lib,
     ...
@@ -13,6 +14,7 @@
       packages = with pkgs; [
         alejandra
         deadnix
+        inputs'.hk.packages.hk
         mdformat
         pkl
         statix

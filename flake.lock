@@ -7,11 +7,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1762521437,
-        "narHash": "sha256-RXN+lcx4DEn3ZS+LqEJSUu/HH+dwGvy0syN7hTo/Chg=",
+        "lastModified": 1768818222,
+        "narHash": "sha256-460jc0+CZfyaO8+w8JNtlClB2n4ui1RbHfPTLkpwhU8=",
         "owner": "numtide",
         "repo": "devshell",
-        "rev": "07bacc9531f5f4df6657c0a02a806443685f384a",
+        "rev": "255a2b1725a20d060f566e4755dbf571bbbb5f76",
         "type": "github"
       },
       "original": {
@@ -42,32 +42,30 @@
         ]
       },
       "locked": {
-        "lastModified": 1763759067,
-        "narHash": "sha256-LlLt2Jo/gMNYAwOgdRQBrsRoOz7BPRkzvNaI/fzXi2Q=",
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "rev": "2cccadc7357c0ba201788ae99c4dfa90728ef5e0",
-        "type": "github"
+        "lastModified": 1772408722,
+        "narHash": "sha256-rHuJtdcOjK7rAHpHphUb1iCvgkU3GpfvicLMwwnfMT0=",
+        "rev": "f20dc5d9b8027381c474144ecabc9034d6a839a3",
+        "revCount": 445,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/hercules-ci/flake-parts/0.1.445%2Brev-f20dc5d9b8027381c474144ecabc9034d6a839a3/019cad18-ffd9-70a0-90f8-be89e5f67bbd/source.tar.gz"
       },
       "original": {
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/hercules-ci/flake-parts/0.1"
       }
     },
     "flake-root": {
       "locked": {
-        "lastModified": 1723604017,
-        "narHash": "sha256-rBtQ8gg+Dn4Sx/s+pvjdq3CB2wQNzx9XGFq/JVGCB6k=",
-        "owner": "srid",
-        "repo": "flake-root",
-        "rev": "b759a56851e10cb13f6b8e5698af7b59c44be26e",
-        "type": "github"
+        "lastModified": 1,
+        "narHash": "sha256-f+Y0YhVCIJ06LemO+3Xx00lIcqQxSKJHXT/yk1RTKxw=",
+        "rev": "d9a70d9c7a5fd7f3258ccf48da9335e9b47c3937",
+        "revCount": 7,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/srid/flake-root/0.1.0/018a1f55-d7e3-733f-8d33-aa7ffd6cd1e5/source.tar.gz"
       },
       "original": {
-        "owner": "srid",
-        "repo": "flake-root",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/srid/flake-root/0.1"
       }
     },
     "flake-utils": {
@@ -113,26 +111,25 @@
         ]
       },
       "locked": {
-        "lastModified": 1763847365,
-        "narHash": "sha256-RVjSCZWzs1nn4k4jf3hj9lhoRKI8S2xc0xMXAz+gTQ8=",
-        "owner": "synapdeck",
-        "repo": "github-actions-nix",
-        "rev": "e941d8dde765b1a860b757e68e814e73a4b1284c",
-        "type": "github"
+        "lastModified": 1772219490,
+        "narHash": "sha256-QxSEr6ueAyKZkYDyuZqWVv1GqZbuSb0jdc05KiXKzQ4=",
+        "rev": "f5e6e94e3b1f694d2afa357570d65e95518c642d",
+        "revCount": 12,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/synapdeck/github-actions-nix/0.1.12%2Brev-f5e6e94e3b1f694d2afa357570d65e95518c642d/019ca088-c9b3-7c73-860a-0e7e4cd15074/source.tar.gz"
       },
       "original": {
-        "owner": "synapdeck",
-        "repo": "github-actions-nix",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/synapdeck/github-actions-nix/0.1"
       }
     },
     "haskell-flake": {
       "locked": {
-        "lastModified": 1763392528,
-        "narHash": "sha256-37+3FH27sizGB4sP6bj9aZSNYtwCkNNcAAqHNiUumCI=",
+        "lastModified": 1772998692,
+        "narHash": "sha256-W5QF5GMHP8abBa9nGSOrmx7NV1jihub95TRHmjoeH1U=",
         "owner": "srid",
         "repo": "haskell-flake",
-        "rev": "af3ce6314f39447be5960c242b3d09ae08b2d469",
+        "rev": "35cbd9e9870299ff9cb697c8f3184b240d1627a8",
         "type": "github"
       },
       "original": {
@@ -149,11 +146,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1763771242,
-        "narHash": "sha256-kLAOplJ9MxEPvwBEyfWPy1yK3YQQZf8B9cEEBcIBxSM=",
+        "lastModified": 1773152876,
+        "narHash": "sha256-JJ3+EU8zj/LxRDPPOrmbFO318mpMWIeEFA8qKlSxGiA=",
         "ref": "refs/heads/main",
-        "rev": "69e9188e98f5343179338e41186d506c90cace4b",
-        "revCount": 919,
+        "rev": "137e62614ba653d422c03be8e5b2807a067bd366",
+        "revCount": 1150,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/jdx/hk"
@@ -214,18 +211,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1763618868,
-        "narHash": "sha256-v5afmLjn/uyD9EQuPBn7nZuaZVV9r+JerayK/4wvdWA=",
-        "owner": "nixos",
-        "repo": "nixpkgs",
-        "rev": "a8d610af3f1a5fb71e23e08434d8d61a466fc942",
-        "type": "github"
+        "lastModified": 1772963539,
+        "narHash": "sha256-9jVDGZnvCckTGdYT53d/EfznygLskyLQXYwJLKMPsZs=",
+        "rev": "9dcb002ca1690658be4a04645215baea8b95f31d",
+        "revCount": 960399,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.960399%2Brev-9dcb002ca1690658be4a04645215baea8b95f31d/019cd400-6f38-7074-b8c8-f84603ddd88b/source.tar.gz"
       },
       "original": {
-        "owner": "nixos",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.1"
       }
     },
     "root": {
@@ -265,17 +260,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1762938485,
-        "narHash": "sha256-AlEObg0syDl+Spi4LsZIBrjw+snSVU4T8MOeuZJUJjM=",
-        "owner": "numtide",
-        "repo": "treefmt-nix",
-        "rev": "5b4ee75aeefd1e2d5a1cc43cf6ba65eba75e83e4",
-        "type": "github"
+        "lastModified": 1772660329,
+        "narHash": "sha256-IjU1FxYqm+VDe5qIOxoW+pISBlGvVApRjiw/Y/ttJzY=",
+        "rev": "3710e0e1218041bbad640352a0440114b1e10428",
+        "revCount": 542,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/numtide/treefmt-nix/0.1.542%2Brev-3710e0e1218041bbad640352a0440114b1e10428/019cbc8c-3fb5-73b3-a216-24f5d59a5339/source.tar.gz"
       },
       "original": {
-        "owner": "numtide",
-        "repo": "treefmt-nix",
-        "type": "github"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/numtide/treefmt-nix/0.1"
       }
     }
   },

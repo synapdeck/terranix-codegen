@@ -1,13 +1,13 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
 
     flake-parts = {
-      url = "github:hercules-ci/flake-parts";
+      url = "https://flakehub.com/f/hercules-ci/flake-parts/0.1";
       inputs.nixpkgs-lib.follows = "nixpkgs";
     };
 
-    flake-root.url = "github:srid/flake-root";
+    flake-root.url = "https://flakehub.com/f/srid/flake-root/0.1";
 
     files.url = "github:mightyiam/files";
 
@@ -19,7 +19,7 @@
     fourmolu-nix.url = "github:jedimahdi/fourmolu-nix";
 
     github-actions-nix = {
-      url = "github:synapdeck/github-actions-nix";
+      url = "https://flakehub.com/f/synapdeck/github-actions-nix/0.1";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         flake-parts.follows = "flake-parts";
@@ -43,7 +43,7 @@
     };
 
     treefmt-nix = {
-      url = "github:numtide/treefmt-nix";
+      url = "https://flakehub.com/f/numtide/treefmt-nix/0.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
