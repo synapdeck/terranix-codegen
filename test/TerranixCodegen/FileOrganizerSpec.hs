@@ -71,6 +71,16 @@ minimalProviderSchema =
 
 spec :: Spec
 spec = do
+  describe "extractShortName" $ do
+    it "extracts short name from OpenTofu registry path" $ do
+      extractShortName "registry.opentofu.org/hashicorp/aws" `shouldBe` "aws"
+
+    it "extracts short name from Terraform registry path" $ do
+      extractShortName "registry.terraform.io/hashicorp/google" `shouldBe` "google"
+
+    it "returns short name unchanged" $ do
+      extractShortName "aws" `shouldBe` "aws"
+
   describe "stripProviderPrefix" $ do
     it "strips provider prefix from resource name" $ do
       stripProviderPrefix "aws" "aws_instance" `shouldBe` "instance"
@@ -216,6 +226,22 @@ spec = do
         organizeProvider tmpDir "aws" providerSchema
 
         doesFileExist (tmpDir </> "aws" </> "provider.nix") `shouldReturn` True
+
+    it "uses short provider name in attribute path for registry paths" $ do
+      withSystemTempDirectory "terranix-test" $ \tmpDir -> do
+        let providerSchema =
+              minimalProviderSchema
+                { configSchema = Just simpleSchema
+                }
+
+        organizeProvider tmpDir "registry.opentofu.org/hashicorp/aws" providerSchema
+
+        let providerFile = tmpDir </> "registry.opentofu.org/hashicorp/aws" </> "provider.nix"
+        doesFileExist providerFile `shouldReturn` True
+
+        content <- TIO.readFile providerFile
+        content `shouldSatisfy` T.isInfixOf "options.provider.aws"
+        content `shouldNotSatisfy` T.isInfixOf "registry.opentofu.org"
 
     it "does not create provider.nix when config schema absent" $ do
       withSystemTempDirectory "terranix-test" $ \tmpDir -> do

@@ -27,6 +27,7 @@ module TerranixCodegen.FileOrganizer (
   generateTopLevelDefault,
   nixExprToText,
   stripProviderPrefix,
+  extractShortName,
 ) where
 
 import Control.Monad (forM, forM_, unless)
@@ -67,6 +68,20 @@ stripProviderPrefix :: Text -> Text -> Text
 stripProviderPrefix providerName name =
   fromMaybe name (T.stripPrefix (providerName <> "_") name)
 
+{- | Extract the short provider name from a full registry path.
+
+The schema JSON uses full registry paths as keys (e.g. @"registry.opentofu.org\/hashicorp\/aws"@),
+but terranix uses short names in attribute paths (e.g. @options.provider.aws@).
+
+Examples:
+
+  * @"registry.opentofu.org\/hashicorp\/aws"@ → @"aws"@
+  * @"registry.terraform.io\/hashicorp\/google"@ → @"google"@
+  * @"aws"@ → @"aws"@
+-}
+extractShortName :: Text -> Text
+extractShortName = snd . T.breakOnEnd "/"
+
 {- | Organize all providers from a ProviderSchemas into a directory structure.
 
 This is the main entry point for the file organizer.
@@ -95,7 +110,8 @@ Creates the directory structure and writes all files for one provider.
 -}
 organizeProvider :: FilePath -> Text -> ProviderSchema -> IO ()
 organizeProvider outputDir providerName providerSchema = do
-  let providerDir = outputDir </> T.unpack providerName
+  let shortName = extractShortName providerName
+      providerDir = outputDir </> T.unpack providerName
       resourcesDir = providerDir </> "resources"
       dataSourcesDir = providerDir </> "data-sources"
 
@@ -109,21 +125,21 @@ organizeProvider outputDir providerName providerSchema = do
         Just _ -> True
         Nothing -> False
   for_ (configSchema providerSchema) $ \schema ->
-    writeProviderConfigModule providerDir providerName schema
+    writeProviderConfigModule providerDir shortName schema
 
   -- Write resource modules
   let resources = maybe [] Map.toList (resourceSchemas providerSchema)
 
   resourceNames <- forM resources $ \(resourceType, schema) -> do
-    writeResourceModule resourcesDir providerName resourceType schema
-    pure $ stripProviderPrefix providerName resourceType
+    writeResourceModule resourcesDir shortName resourceType schema
+    pure $ stripProviderPrefix shortName resourceType
 
   -- Write data source modules
   let dataSources = maybe [] Map.toList (dataSourceSchemas providerSchema)
 
   dataSourceNames <- forM dataSources $ \(dataSourceType, schema) -> do
-    writeDataSourceModule dataSourcesDir providerName dataSourceType schema
-    pure $ stripProviderPrefix providerName dataSourceType
+    writeDataSourceModule dataSourcesDir shortName dataSourceType schema
+    pure $ stripProviderPrefix shortName dataSourceType
 
   -- Generate default.nix files
   unless (null resourceNames) $

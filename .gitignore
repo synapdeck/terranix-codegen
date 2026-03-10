@@ -21,3 +21,6 @@ result-*
 
 # mdbook
 docs/book/
+
+# output
+modules/
