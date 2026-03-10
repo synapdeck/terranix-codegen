@@ -463,6 +463,38 @@ spec = do
           }
         |]
 
+    it "uses schema block description for resource module" $ do
+      let schema =
+            emptySchema
+              { schemaBlock =
+                  Just $
+                    emptyBlock
+                      { blockAttributes =
+                          Just $
+                            Map.fromList
+                              [("name", emptyAttr {attributeType = Just CtyString, attributeRequired = Just True})]
+                      , blockDescription = Just "Manages a compute instance"
+                      }
+              }
+      generateResourceModule "aws" "aws_instance" schema
+        `shouldMapTo` [nix|
+          { lib, ... }:
+          with lib;
+          {
+            options.resource.aws_instance = mkOption {
+              type = types.attrsOf (types.submodule {
+                options = {
+                  name = mkOption {
+                    type = types.str;
+                  };
+                };
+              });
+              default = {};
+              description = "Manages a compute instance";
+            };
+          }
+        |]
+
   describe "generateDataSourceModule" $ do
     it "generates complete data source module" $ do
       let schema =
@@ -491,6 +523,38 @@ spec = do
               });
               default = {};
               description = "Instances of aws_ami data source";
+            };
+          }
+        |]
+
+    it "uses schema block description for data source module" $ do
+      let schema =
+            emptySchema
+              { schemaBlock =
+                  Just $
+                    emptyBlock
+                      { blockAttributes =
+                          Just $
+                            Map.fromList
+                              [("name", emptyAttr {attributeType = Just CtyString, attributeRequired = Just True})]
+                      , blockDescription = Just "Fetches AMI information"
+                      }
+              }
+      generateDataSourceModule "aws" "aws_ami" schema
+        `shouldMapTo` [nix|
+          { lib, ... }:
+          with lib;
+          {
+            options.data.aws_ami = mkOption {
+              type = types.attrsOf (types.submodule {
+                options = {
+                  name = mkOption {
+                    type = types.str;
+                  };
+                };
+              });
+              default = {};
+              description = "Fetches AMI information";
             };
           }
         |]
@@ -529,6 +593,38 @@ spec = do
               });
               default = {};
               description = "aws provider configuration";
+            };
+          }
+        |]
+
+    it "uses schema block description for provider module" $ do
+      let schema =
+            emptySchema
+              { schemaBlock =
+                  Just $
+                    emptyBlock
+                      { blockAttributes =
+                          Just $
+                            Map.fromList
+                              [("region", emptyAttr {attributeType = Just CtyString, attributeRequired = Just True})]
+                      , blockDescription = Just "The AWS provider configuration"
+                      }
+              }
+      generateProviderModule "aws" schema
+        `shouldMapTo` [nix|
+          { lib, ... }:
+          with lib;
+          {
+            options.provider.aws = mkOption {
+              type = types.attrsOf (types.submodule {
+                options = {
+                  region = mkOption {
+                    type = types.str;
+                  };
+                };
+              });
+              default = {};
+              description = "The AWS provider configuration";
             };
           }
         |]
