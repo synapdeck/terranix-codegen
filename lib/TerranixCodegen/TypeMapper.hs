@@ -15,12 +15,15 @@ import TerranixCodegen.ProviderSchema.CtyType
 {- | Map a Terraform CtyType to a Nix type expression.
 
 This generates expressions like:
-  - types.str
-  - types.bool
-  - types.number
-  - types.listOf types.str
-  - types.attrsOf types.str
-  - types.submodule { options = {...}; }
+
+@
+types.str
+types.bool
+types.number
+types.listOf types.str
+types.attrsOf types.str
+types.submodule { options = {...}; }
+@
 
 The resulting NExpr can be pretty-printed to produce Nix code.
 -}
@@ -51,8 +54,11 @@ mapCtyTypeToNix = \case
 {- | Map a CtyType to a Nix type expression, optionally wrapping in types.nullOr.
 
 This is used for optional attributes:
-  - Required: mapCtyTypeToNixWithOptional False ctyType  →  types.str
-  - Optional: mapCtyTypeToNixWithOptional True ctyType   →  types.nullOr types.str
+
+@
+Required: mapCtyTypeToNixWithOptional False ctyType  →  types.str
+Optional: mapCtyTypeToNixWithOptional True ctyType   →  types.nullOr types.str
+@
 -}
 mapCtyTypeToNixWithOptional :: Bool -> CtyType -> NExpr
 mapCtyTypeToNixWithOptional isOptional ctyType =
@@ -69,8 +75,9 @@ mkSelect :: NExpr -> Text -> NExpr
 mkSelect expr attr = Fix $ NSelect Nothing expr (mkSelector attr)
 
 {- | Helper to build a Nix list of type expressions
-Maps each CtyType to its Nix type and wraps in a list
-Example: [CtyString, CtyNumber] -> [types.str, types.number]
+Maps each CtyType to its Nix type and wraps in a list.
+
+Example: @[CtyString, CtyNumber] -> [types.str, types.number]@
 -}
 mkTypeList :: [CtyType] -> NExpr
 mkTypeList elemTypes = Fix $ NList (map mapCtyTypeToNix elemTypes)
@@ -78,18 +85,24 @@ mkTypeList elemTypes = Fix $ NList (map mapCtyTypeToNix elemTypes)
 {- | Map a Terraform object type to a Nix submodule.
 
 An object like:
-  object({
-    host = string
-    port = number
-  })
+
+@
+object({
+  host = string
+  port = number
+})
+@
 
 Becomes:
-  types.submodule {
-    options = {
-      host = mkOption { type = types.str; };
-      port = mkOption { type = types.number; };
-    };
-  }
+
+@
+types.submodule {
+  options = {
+    host = mkOption { type = types.str; };
+    port = mkOption { type = types.number; };
+  };
+}
+@
 -}
 mapObjectToSubmodule :: Map.Map Text CtyType -> Set.Set Text -> NExpr
 mapObjectToSubmodule attrTypes optionals =

@@ -25,21 +25,27 @@ import TerranixCodegen.ProviderSchema.Types (SchemaNestingMode (..))
 {- | Generate a complete NixOS module for a Terraform resource.
 
 Creates a module with the structure:
-  { lib, ... }:
-  with lib;
-  {
-    options.resource.{resourceType} = mkOption {
-      type = types.attrsOf (types.submodule { options = {...}; });
-      default = {};
-      description = "<schema block description or fallback>";
-    };
-  }
+
+@
+{ lib, ... }:
+with lib;
+{
+  options.resource.{resourceType} = mkOption {
+    type = types.attrsOf (types.submodule { options = {...}; });
+    default = {};
+    description = "\<schema block description or fallback\>";
+  };
+}
+@
 
 Uses the schema's block description when available, otherwise falls back to
 "Instances of {resourceType}".
 
 Example:
-  generateResourceModule "aws" "aws_instance" schema
+
+@
+generateResourceModule "aws" "aws_instance" schema
+@
 -}
 generateResourceModule :: Text -> Text -> Schema -> NExpr
 generateResourceModule _providerName resourceType schema =
@@ -151,15 +157,18 @@ generateDataSourceModule _providerName dataSourceType schema =
 {- | Generate a complete NixOS module for a Terraform provider configuration.
 
 Creates a module with the structure:
-  { lib, ... }:
-  with lib;
-  {
-    options.provider.{providerName} = mkOption {
-      type = types.attrsOf (types.submodule { options = {...}; });
-      default = {};
-      description = "<schema block description or fallback>";
-    };
-  }
+
+@
+{ lib, ... }:
+with lib;
+{
+  options.provider.{providerName} = mkOption {
+    type = types.attrsOf (types.submodule { options = {...}; });
+    default = {};
+    description = "\<schema block description or fallback\>";
+  };
+}
+@
 
 Uses the schema's block description when available, otherwise falls back to
 "{providerName} provider configuration".
@@ -222,7 +231,7 @@ Processes:
   - blockAttributes: Converted to options using OptionBuilder
   - blockNestedBlocks: Converted to nested options with nesting mode wrappers
 
-Returns: types.submodule { options = {...}; }
+Returns: @types.submodule { options = {...}; }@
 -}
 blockToSubmodule :: SchemaBlock -> NExpr
 blockToSubmodule block =

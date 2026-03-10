@@ -26,7 +26,10 @@ into NixOS module options. It handles:
   - Read-only flag for computed-only attributes
 
 Example usage:
-  buildOption "ami" schemaAttr  →  mkOption { type = types.str; description = "..."; }
+
+@
+buildOption "ami" schemaAttr  →  mkOption { type = types.str; description = "..."; }
+@
 -}
 buildOption :: Text -> SchemaAttribute -> NExpr
 buildOption _attrName attr =
@@ -171,12 +174,15 @@ buildNestedAttributeType nestedType =
 {- | Convert a Map of SchemaAttributes to a types.submodule expression.
 
 This creates:
-  types.submodule {
-    options = {
-      attr1 = mkOption { ... };
-      attr2 = mkOption { ... };
-    };
-  }
+
+@
+types.submodule {
+  options = {
+    attr1 = mkOption { ... };
+    attr2 = mkOption { ... };
+  };
+}
+@
 -}
 attributesToSubmodule :: Map Text SchemaAttribute -> NExpr
 attributesToSubmodule attrs =

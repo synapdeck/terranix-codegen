@@ -3,17 +3,20 @@
 This module handles organizing generated Nix modules into a clean directory structure.
 
 Directory structure:
-  providers/
-  ├── default.nix                # Top-level: imports all providers
-  ├── {provider}/
-  │   ├── default.nix            # Provider-level: imports provider.nix, resources/, data-sources/
-  │   ├── provider.nix           # Provider configuration module
-  │   ├── resources/
-  │   │   ├── default.nix        # Imports all resources
-  │   │   └── {resource}.nix     # Individual resource modules
-  │   └── data-sources/
-  │       ├── default.nix        # Imports all data sources
-  │       └── {datasource}.nix   # Individual data source modules
+
+@
+providers/
+├── default.nix                # Top-level: imports all providers
+├── {provider}/
+│   ├── default.nix            # Provider-level: imports provider.nix, resources/, data-sources/
+│   ├── provider.nix           # Provider configuration module
+│   ├── resources/
+│   │   ├── default.nix        # Imports all resources
+│   │   └── {resource}.nix     # Individual resource modules
+│   └── data-sources/
+│       ├── default.nix        # Imports all data sources
+│       └── {datasource}.nix   # Individual data source modules
+@
 -}
 module TerranixCodegen.FileOrganizer (
   organizeFiles,
