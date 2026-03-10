@@ -83,7 +83,10 @@ generateResourceModule _providerName resourceType schema =
     descriptionBinding =
       NamedVar
         (mkSelector "description")
-        (mkStr $ "Instances of " <> resourceType)
+        ( case schemaBlock schema >>= Description.fromBlock of
+            Just desc -> Description.toNExpr desc
+            Nothing -> mkStr $ "Instances of " <> resourceType
+        )
         nullPos
 
 {- | Generate a complete NixOS module for a Terraform data source.
@@ -136,7 +139,10 @@ generateDataSourceModule _providerName dataSourceType schema =
     descriptionBinding =
       NamedVar
         (mkSelector "description")
-        (mkStr $ "Instances of " <> dataSourceType <> " data source")
+        ( case schemaBlock schema >>= Description.fromBlock of
+            Just desc -> Description.toNExpr desc
+            Nothing -> mkStr $ "Instances of " <> dataSourceType <> " data source"
+        )
         nullPos
 
 {- | Generate a complete NixOS module for a Terraform provider configuration.
@@ -198,7 +204,10 @@ generateProviderModule providerName schema =
     descriptionBinding =
       NamedVar
         (mkSelector "description")
-        (mkStr $ providerName <> " provider configuration")
+        ( case schemaBlock schema >>= Description.fromBlock of
+            Just desc -> Description.toNExpr desc
+            Nothing -> mkStr $ providerName <> " provider configuration"
+        )
         nullPos
 
 {- | Convert a SchemaBlock to a types.submodule expression.
