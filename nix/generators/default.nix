@@ -17,6 +17,8 @@
       '';
     };
 
+  # Note: the tofu path (no pluginDrv) requires network access at build time.
+  # Build with: nix build --option sandbox false
   generateProvider = {
     provider,
     pluginDrv ? null,

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Expose terranix-codegen's code generation as Nix derivation-producing functions so consumers can generate type-safe NixOS modules for Terraform providers at Nix build time, similar to how nixidy exposes its generators under `packages.${system}.generators`.
+Expose terranix-codegen's code generation as Nix derivation-producing functions so consumers can generate type-safe NixOS modules for Terraform providers at Nix build time, similar to how nixidy exposes its generators. Exposed under `legacyPackages.${system}.generators` (not `packages`) because the generators attrset contains functions, not derivations, and flake-parts type-checks `packages` entries as derivations.
 
 ## File Structure
 
@@ -11,13 +11,13 @@ nix/
   generators/
     default.nix          # { pkgs, terranix-codegen } -> { generateFromSchema, generateProvider }
   flake/
-    generators.nix       # flake-parts perSystem module wiring generators into packages
+    generators.nix       # flake-parts perSystem module wiring generators into legacyPackages
     default.nix          # Updated to import generators.nix
 ```
 
 `nix/generators/default.nix` is a standalone file (no flake-parts dependency) that takes `{ pkgs, terranix-codegen }` and returns the two generator functions. It is independent of the flake so it can be used from a non-flake `default.nix` entry point as well.
 
-`nix/flake/generators.nix` is a flake-parts module that wires the generators into `packages.${system}.generators` by passing the per-system `pkgs` and `self'.packages.terranix-codegen`.
+`nix/flake/generators.nix` is a flake-parts module that wires the generators into `legacyPackages.${system}.generators` by passing the per-system `pkgs` and `self'.packages.terranix-codegen`.
 
 ## API
 
@@ -97,7 +97,7 @@ Fully sandboxed — the plugin binary is already in the Nix store via `withPlugi
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
     providers-bin = nixpkgs-terraform-providers-bin.packages.${system};
-    gen = terranix-codegen.packages.${system}.generators;
+    gen = terranix-codegen.legacyPackages.${system}.generators;
   in {
     # From pre-existing schema JSON (fully pure)
     awsModules = gen.generateFromSchema {
@@ -124,11 +124,11 @@ Fully sandboxed — the plugin binary is already in the Nix store via `withPlugi
 `nix/flake/generators.nix` (new file):
 
 ```nix
-{ ... }: {
+_: {
   perSystem = { pkgs, self', ... }: {
-    packages.generators = import ../generators {
+    legacyPackages.generators = import ../generators {
       inherit pkgs;
-      terranix-codegen = self'.packages.terranix-codegen;
+      inherit (self'.packages) terranix-codegen;
     };
   };
 }
