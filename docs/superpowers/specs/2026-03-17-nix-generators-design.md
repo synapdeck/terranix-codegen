@@ -2,21 +2,22 @@
 
 ## Goal
 
-Expose terranix-codegen's code generation as Nix library functions so consumers can generate type-safe NixOS modules for Terraform providers at Nix build time, similar to how nixidy exposes its generators.
+Expose terranix-codegen's code generation as Nix derivation-producing functions so consumers can generate type-safe NixOS modules for Terraform providers at Nix build time, similar to how nixidy exposes its generators under `packages.${system}.generators`.
 
 ## File Structure
 
 ```
 nix/
   generators/
-    default.nix          # Pure Nix functions: { generateFromSchema, generateProvider }
+    default.nix          # { pkgs, terranix-codegen } -> { generateFromSchema, generateProvider }
   flake/
-    lib.nix              # Extended to wire generators into flake.lib
+    generators.nix       # flake-parts perSystem module wiring generators into packages
+    default.nix          # Updated to import generators.nix
 ```
 
-`nix/generators/default.nix` is a standalone file (no flake-parts dependency) that takes `{ terranix-codegen }` (the executable derivation) and returns the two generator functions. Both functions accept `pkgs` from the consumer.
+`nix/generators/default.nix` is a standalone file (no flake-parts dependency) that takes `{ pkgs, terranix-codegen }` and returns the two generator functions. It is independent of the flake so it can be used from a non-flake `default.nix` entry point as well.
 
-The existing `nix/flake/lib.nix` is extended to expose these functions under `flake.lib.generators`.
+`nix/flake/generators.nix` is a flake-parts module that wires the generators into `packages.${system}.generators` by passing the per-system `pkgs` and `self'.packages.terranix-codegen`.
 
 ## API
 
@@ -24,7 +25,6 @@ The existing `nix/flake/lib.nix` is extended to expose these functions under `fl
 
 ```nix
 generateFromSchema {
-  pkgs,                    # nixpkgs package set
   schema,                  # path to provider schema JSON file
   outputDir ? "providers", # output directory name in the derivation
 }
@@ -36,7 +36,6 @@ Runs `terranix-codegen generate -i ${schema} -o $out/${outputDir}` inside a deri
 
 ```nix
 generateProvider {
-  pkgs,                    # nixpkgs package set
   provider,                # provider spec string, e.g. "hashicorp/aws:5.0.0"
   pluginDrv ? null,        # optional: provider plugin derivation (e.g. from nixpkgs-terraform-providers-bin)
   terraform ? null,        # terraform package (required when pluginDrv is set)
@@ -45,28 +44,46 @@ generateProvider {
 }
 ```
 
+Note: `pkgs` is not a per-call argument — it is captured from the outer scope when the generators are constructed.
+
 Two modes based on whether `pluginDrv` is provided:
 
 **Without `pluginDrv` (tofu path):**
 
-1. Create a minimal `.tf.json` requiring the provider
-1. Run `tofu init && tofu providers schema -json`
-1. Pipe schema JSON to `terranix-codegen generate -o $out/${outputDir}`
+Uses the CLI's built-in provider spec handling:
 
-Requires network access at build time (sandbox must be disabled, or provider must be available via `withPlugins`).
+```bash
+terranix-codegen generate -p ${provider} -o $out/${outputDir}
+```
+
+The `-p` flag internally runs `tofu init` and `tofu providers schema -json`. The `tofu` parameter controls which binary is used via `-t`.
+
+Requires network access at build time — the Nix sandbox must be disabled for this path.
 
 **With `pluginDrv` (terraform path):**
 
-1. Wrap terraform with the plugin: `terraform.withPlugins (p: [ pluginDrv ])`
-1. Create a minimal `.tf.json` requiring the provider
-1. Run `terraformWithPlugin providers schema -json`
-1. Pipe schema JSON to `terranix-codegen generate -o $out/${outputDir}`
+1. Wrap terraform with the plugin: `terraform.withPlugins (_: [ pluginDrv ])`
+1. Run via CLI with the wrapped terraform:
 
-Fully sandboxed — the plugin binary is already in the Nix store. Uses `terraform` (not `tofu`) because opentofu is incompatible with the binary providers.
+```bash
+terranix-codegen generate -p ${provider} -t terraform -o $out/${outputDir}
+```
+
+The wrapped terraform is placed on `PATH` in the derivation's `nativeBuildInputs`, so `-t terraform` resolves to it. The `-p` flag internally runs `terraform providers schema -json` using that binary.
+
+Fully sandboxed — the plugin binary is already in the Nix store via `withPlugins`. Uses `terraform` (not `tofu`) because opentofu is incompatible with binary providers.
+
+**`pluginDrv` requirements:** Must be a derivation compatible with `terraform.withPlugins`, meaning it has the standard nixpkgs terraform provider structure (e.g. `libexec/terraform-providers/...`). Derivations from nixpkgs-terraform-providers-bin satisfy this.
 
 ## Assertions
 
-- If `pluginDrv` is set but `terraform` is null, fail at evaluation time with a clear error message.
+- If `pluginDrv` is set but `terraform` is null, fail at evaluation time with: `"generateProvider: terraform must be provided when pluginDrv is set"`
+
+## Build Inputs
+
+- `generateFromSchema`: `nativeBuildInputs = [ terranix-codegen ]`
+- `generateProvider` (tofu path): `nativeBuildInputs = [ terranix-codegen tofu ]`
+- `generateProvider` (terraform path): `nativeBuildInputs = [ terranix-codegen terraformWithPlugin ]`
 
 ## Consumer Usage
 
@@ -77,25 +94,23 @@ Fully sandboxed — the plugin binary is already in the Nix store. Uses `terrafo
 
   outputs = { nixpkgs, terranix-codegen, nixpkgs-terraform-providers-bin, ... }:
   let
-    pkgs = nixpkgs.legacyPackages.x86_64-linux;
-    providers-bin = nixpkgs-terraform-providers-bin.packages.x86_64-linux;
-    gen = terranix-codegen.lib.generators;
+    system = "x86_64-linux";
+    pkgs = nixpkgs.legacyPackages.${system};
+    providers-bin = nixpkgs-terraform-providers-bin.packages.${system};
+    gen = terranix-codegen.packages.${system}.generators;
   in {
     # From pre-existing schema JSON (fully pure)
     awsModules = gen.generateFromSchema {
-      inherit pkgs;
       schema = ./aws-schema.json;
     };
 
     # From tofu (requires sandbox disabled)
     awsModules' = gen.generateProvider {
-      inherit pkgs;
       provider = "hashicorp/aws:5.0.0";
     };
 
     # From plugin derivation (fully sandboxed)
     awsModules'' = gen.generateProvider {
-      inherit pkgs;
       provider = "hashicorp/aws:5.0.0";
       pluginDrv = providers-bin.aws;
       terraform = pkgs.terraform;
@@ -106,23 +121,17 @@ Fully sandboxed — the plugin binary is already in the Nix store. Uses `terrafo
 
 ## Wiring
 
-`nix/flake/lib.nix` currently exposes:
+`nix/flake/generators.nix` (new file):
 
 ```nix
-flake.lib = lib.makeExtensible (_: {
-  types = { inherit (import ../lib/tuple.nix { inherit lib; }) tupleOf; };
-});
+{ ... }: {
+  perSystem = { pkgs, self', ... }: {
+    packages.generators = import ../generators {
+      inherit pkgs;
+      terranix-codegen = self'.packages.terranix-codegen;
+    };
+  };
+}
 ```
 
-This will be extended to include:
-
-```nix
-flake.lib = lib.makeExtensible (_: {
-  types = { ... };
-  generators = import ../generators { inherit terranix-codegen; };
-});
-```
-
-Where `terranix-codegen` is the built executable package. Since `lib.nix` is a flake-parts module with access to `perSystem`, the executable will come from `self'.packages.terranix-codegen`. The generators functions themselves are system-independent — they take `pkgs` from the consumer — but the executable they invoke is system-specific, so the wiring must account for this (either making `generators` per-system, or deferring the executable resolution to the consumer's `pkgs`).
-
-**Resolution:** The generators will be per-system, exposed under `perSystem.lib.generators` or passed as `flake.lib.generators.${system}`. Alternatively, `nix/generators/default.nix` takes the executable as an argument and each function closes over it, so the flake wiring passes the per-system executable once.
+The existing `nix/flake/lib.nix` is unchanged — `flake.lib.types.tupleOf` remains as-is. Generators are per-system because they close over a per-system executable.
