@@ -4,13 +4,18 @@
   ...
 }: let
   # Autodiscover all .test.nix files in the lib directory
-  testFiles = builtins.filter (name: lib.hasSuffix ".test.nix" name) (
+  libTestFiles = builtins.filter (name: lib.hasSuffix ".test.nix" name) (
     builtins.attrNames (builtins.readDir ../lib)
   );
 
-  # Import and merge all test files
-  importTests = file: import (../lib + "/${file}") {inherit lib;};
-  allTests = lib.foldl' (acc: file: acc // importTests file) {} testFiles;
+  # Import and merge all lib test files (system-agnostic, take {lib})
+  importLibTests = file: import (../lib + "/${file}") {inherit lib;};
+  libTests = lib.foldl' (acc: file: acc // importLibTests file) {} libTestFiles;
+
+  # Autodiscover all .test.nix files in the generators directory
+  generatorTestFiles = builtins.filter (name: lib.hasSuffix ".test.nix" name) (
+    builtins.attrNames (builtins.readDir ../generators)
+  );
 in {
   imports = [
     inputs.nix-unit.modules.flake.default
@@ -18,6 +23,7 @@ in {
 
   perSystem = {
     pkgs,
+    self',
     system,
     ...
   }: {
@@ -28,6 +34,23 @@ in {
         else input;
     in
       builtins.mapAttrs (_: sanitizeInput) (builtins.removeAttrs inputs ["self"]);
+
+    # All tests live under perSystem.nix-unit.tests so they appear at
+    # tests.systems.<system> (managed by the nix-unit flake module).
+    # Lib tests are pure Nix and evaluate identically under any system.
+    nix-unit.tests = let
+      importGenTests =
+        lib.foldl' (
+          acc: file:
+            acc
+            // import (../generators + "/${file}") {
+              inherit pkgs;
+              inherit (self'.packages) terranix-codegen;
+            }
+        ) {}
+        generatorTestFiles;
+    in
+      libTests // importGenTests;
 
     devshells.default = {
       commands = [
@@ -43,7 +66,4 @@ in {
       ];
     };
   };
-
-  # System-agnostic tests at the flake level
-  flake.tests = allTests;
 }
