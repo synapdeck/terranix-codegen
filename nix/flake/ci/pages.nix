@@ -15,7 +15,7 @@ _: {
       };
 
       defaults.job = {
-        runsOn = "ubuntu-latest";
+        runsOn = "warp-ubuntu-latest-arm64-2x";
       };
 
       jobs = {

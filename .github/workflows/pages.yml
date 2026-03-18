@@ -3,7 +3,7 @@
 jobs:
   build:
     name: Build documentation
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-arm64-2x
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +27,7 @@ jobs:
     permissions:
       id-token: write
       pages: write
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-arm64-2x
     steps:
       - id: deployment
         name: Deploy to GitHub Pages
